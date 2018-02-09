@@ -4,10 +4,10 @@ Generating heatmaps for gene sets of interest in Prostate Cancer datasets (SU2C)
 This app is built on the Shiny framework in R, it will open in a web browser for user interaction.
 
 
-##Purpose of Heatmap App:
+## Purpose of Heatmap App:
 In RNA-seq and microarray experiments we often get a list of differentially regulated genes.  You can use this heatmap generator to identify if your gene set associates with prostate cancer progression in SU2C and TCGA datasets.  All you need is a list of genes you’re interested in.
 
-###Setup gene list file:
+### Setup gene list file:
 
 You must prepare your gene list to be accepted by the app.  
 •	Gene symbols in the first column, with a header row (i.e. GENE in the first row)
@@ -15,7 +15,7 @@ You must prepare your gene list to be accepted by the app.
 •	The file must have at least two columns, if you only have a list of genes, just duplicate them in column 2 and name the header row GENE2.
 •	Using excel, save your file as a tab-delimited .txt file
 
-###Heatmap apps, how to use:
+### Heatmap apps, how to use:
 
 1.	If you do not have R installed, download and install from:
     a.	https://cran.r-project.org/bin/windows/base/rpatched.html
