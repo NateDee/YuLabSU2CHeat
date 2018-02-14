@@ -16,7 +16,7 @@ server <- function(input,output) {
 		
 	geneInput <- reactive({
 		validate(
-    		need(input$GOI %in% dbgap[,2], "To enter a valid gene of interest for a matched heatmap") 
+    		need(unlist(strsplit(input$GOI,",")) %in% dbgap[,2], "To enter a valid gene of interest for a matched heatmap") 
     		)
 		inGOI <- input$GOI
 		if (is.null(inGOI))
@@ -27,8 +27,8 @@ server <- function(input,output) {
 	drawHeatmap <- function() {
 		query <- datasetInput()
 		#If user put in a gene to sort by, use it to resort dbgap:
-			if (input$GOI %in% dbgap[,2]) {
-				rowOfGene = which(dbgap[,2] == input$GOI)
+			if (unlist(strsplit(input$GOI,","))[1] %in% dbgap[,2]) {
+				rowOfGene = which(dbgap[,2] == unlist(strsplit(input$GOI,","))[1])
 				dbgap.tmp = dbgap[,3:262]
 				dbgap.tmp = dbgap.tmp[,order(dbgap.tmp[1,], dbgap.tmp[rowOfGene,])]
 				dbgap = cbind(dbgap[,1:2], dbgap.tmp)
@@ -56,22 +56,32 @@ server <- function(input,output) {
 	drawGeneHeatmap <- function() {
 		query <- datasetInput()
 		GOI <- geneInput()
+		GOI <- unlist(strsplit(GOI, ","))
 		#If user put in a gene to sort by, use it to resort dbgap:
-			if (GOI %in% dbgap[,2]) {
-				rowOfGene = which(dbgap[,2] == GOI)
+			if (GOI[1] %in% dbgap[,2]) {
+				rowOfGene = which(dbgap[,2] == GOI[1])
 				dbgap.tmp = dbgap[,3:262]
 				dbgap.tmp = dbgap.tmp[,order(dbgap.tmp[1,], dbgap.tmp[rowOfGene,])]
 				dbgap = cbind(dbgap[,1:2], dbgap.tmp)
 				#dbgap[,3:262] <- dbgap[order(dbgap[1, 3:262], dbgap[rowOfGene,3:262]), 3:262]
 				}
 			#Filter dbgap with query
-			dbgap.query = dbgap[which(dbgap[,2] == input$GOI),]
+			dbgap.query = dbgap[which(dbgap[,2] %in% GOI),]
+			if (length(GOI) > 1) { 
+				dbgap.query = dbgap.query[order(factor(dbgap.query$Gene_name, levels=GOI)),]
+				}
 			group = c(rep("green", 35), rep("orange", 78), rep("red", 132), rep("darkred", 15))
 			palette = colorRampPalette(c("green", "black", "red"))(n=100)
 			scalelow = input$range[1]
 			scalehigh = input$range[2]
-			#Make matrix
-			mat.dbq = as.matrix(rbind(dbgap.query[,3:262],dbgap.query[,3:262]), )
+			#Make matrix double if only one input gene
+			if (length(GOI) == 1) {
+				mat.dbq = as.matrix(rbind(dbgap.query[,3:262],dbgap.query[,3:262]), )
+				rownames(mat.dbq) = c(GOI, GOI)
+				} else {
+				mat.dbq = as.matrix(dbgap.query[,3:262])
+				rownames(mat.dbq) = dbgap.query[,2]
+				}
 			assign('mat', mat.dbq, envir = globalenv())
 			#Get rid of NA values
 			#mat.dbq = mat.dbq[complete.cases(mat.dbq), ]  ###Add something to show NA values later,****added, see table output
