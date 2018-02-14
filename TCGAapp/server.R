@@ -16,7 +16,7 @@ server <- function(input,output) {
 		
 	geneInput <- reactive({
 		validate(
-    		need(input$GOI %in% tcga[,2], "To enter a valid gene of interest for a matched heatmap") 
+    		need(unlist(strsplit(input$GOI,",")) %in% tcga[,2], "To enter a valid gene of interest for a matched heatmap") 
     		)
 		inGOI <- input$GOI
 		if (is.null(inGOI))
@@ -27,8 +27,8 @@ server <- function(input,output) {
 	drawHeatmap <- function() {
 		query <- datasetInput()
 		#If user put in a gene to sort by, use it to resort tcga:
-			if (input$GOI %in% tcga[,2]) {
-				rowOfGene = which(tcga[,2] == input$GOI)
+			if (unlist(strsplit(input$GOI,","))[1] %in% tcga[,2]) {
+				rowOfGene = which(tcga[,2] == unlist(strsplit(input$GOI,","))[1])
 				tcga.tmp = tcga[,3:553]
 				tcga.tmp = tcga.tmp[,order(tcga.tmp[1,], tcga.tmp[rowOfGene,])]
 				tcga = cbind(tcga[,1:2], tcga.tmp)
@@ -56,22 +56,32 @@ server <- function(input,output) {
 	drawGeneHeatmap <- function() {
 		query <- datasetInput()
 		GOI <- geneInput()
+		GOI <- unlist(strsplit(GOI, ","))
 		#If user put in a gene to sort by, use it to resort tcga:
-			if (GOI %in% tcga[,2]) {
-				rowOfGene = which(tcga[,2] == GOI)
+			if (GOI[1] %in% tcga[,2]) {
+				rowOfGene = which(tcga[,2] == GOI[1])
 				tcga.tmp = tcga[,3:553]
 				tcga.tmp = tcga.tmp[,order(tcga.tmp[1,], tcga.tmp[rowOfGene,])]
 				tcga = cbind(tcga[,1:2], tcga.tmp)
 				#tcga[,3:553] <- tcga[order(tcga[1, 3:553], tcga[rowOfGene,3:553]), 3:553]
 				}
 			#Filter tcga with query
-			tcga.query = tcga[which(tcga[,2] == input$GOI),]
+			tcga.query = tcga[which(tcga[,2] %in% GOI),]
+			if (length(GOI) > 1) { 
+				tcga.query = tcga.query[order(factor(tcga.query$Gene_name, levels=GOI)),]
+				}
 			group = c(rep("green", 52), rep("orange", 499))
 			palette = colorRampPalette(c("green", "black", "red"))(n=100)
 			scalelow = input$range[1]
 			scalehigh = input$range[2]
 			#Make matrix
-			mat.dbq = as.matrix(rbind(tcga.query[,3:553],tcga.query[,3:553]), )
+			if (length(GOI) == 1) {
+				mat.dbq = as.matrix(rbind(tcga.query[,3:553],tcga.query[,3:553]), )
+				rownames(mat.dbq) = c(GOI, GOI)
+				} else {
+				mat.dbq = as.matrix(tcga.query[,3:553])
+				rownames(mat.dbq) = tcga.query[,2]
+				}
 			assign('mat', mat.dbq, envir = globalenv())
 			#Get rid of NA values
 			#mat.dbq = mat.dbq[complete.cases(mat.dbq), ]  ###Add something to show NA values later,****added, see table output
