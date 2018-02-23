@@ -17,26 +17,26 @@ You must prepare your gene list to be accepted by the app.
 
 ### Heatmap app, how to use:
 
-1.	If you do not have R installed, download and install from:
+1.    If you do not have R installed, download and install from:
     a.	https://cran.r-project.org/bin/windows/base/rpatched.html
     b.	R install doesn’t require any special permissions, so you should be able to install
-2.	Open R
-3.	Open the folder:
+2.    Open R
+3.    Open the folder:
     a.	R:\Medicine\Hematology-Oncology\Yu_Lab\Nate\scripts_and_tools\YuLab-SU2C-TCGA
-4.	Drag the BootSU2C-TCGA-HeatmapApp.R file into your R session.
+4.    Drag the BootSU2C-TCGA-HeatmapApp.R file into your R session.
     a.	The Boot script will test to make sure you have everything installed that is needed, if this is your first time running it may take a couple minutes to set up.
-5.	The app will then open in a web browser:
-6.	Select the Database you would like to analyse (Either SU2C or TCGA)
+5.    The app will then open in a web browser:
+6.    Select the Database you would like to analyse (Either SU2C or TCGA)
     a.	SU2C contains Benign, Primary PCa, CRPC, and CRPC-NE tumors
     b.	TCGA contains Benign, and a large dataset of Primary PCa
-7.	Upload your geneset by clicking “Browse” to generate a heatmap.
-8.	Test set: sharma-neal_etal2013_cancercell.txt
+7.    Upload your geneset by clicking “Browse” to generate a heatmap.
+8.    Test set: sharma-neal_etal2013_cancercell.txt
     a.	R:\Medicine\Hematology-Oncology\Yu_Lab\Nate\scripts_and_tools\ YuLab-SU2C-TCGA \ sharma-neal_etal20113_cancercell.txt
-9.	If you wish to sort by a single gene of interest type it in.
+9.    If you wish to sort by a single gene of interest type it in.
     a.	This will also provide a single heatmap for the gene of interest
-10.	Click Download Heatmap to save a high resolution version.
+10.    Click Download Heatmap to save a high resolution version.
     a.	You can also download a heatmap for your gene of interest if you selected one
-11.	The “Genes” tab will tell you the order of your genes in the heatmap
+11.    The “Genes” tab will tell you the order of your genes in the heatmap
     a.	If you select the checkbox for “Sort gene rows by correlation with GOI?” – The genes tab will display Pearson R correlation values for your gene of interest vs. each gene
-12.	If any genes in your gene list are not found in the database, they will be included in the “Excluded Genes” tab.
+12.    If any genes in your gene list are not found in the database, they will be included in the “Excluded Genes” tab.
 
