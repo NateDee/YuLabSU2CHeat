@@ -83,7 +83,7 @@ server <- function(input,output) {
 			group = c(rep("green", 35), rep("orange", 78), rep("red", 132), rep("darkred", 15))
 			#Set heatmap arguments
 			genes = dbgap.query[,2]
-			palette = colorRampPalette(c("green", "black", "red"))(n=100)
+			palette = colorRampPalette(c(input$lowcolor, input$midcolor, input$highcolor))(n=100)
 			scalelow = input$range[1]
 			scalehigh = input$range[2]
 			#Make matrix
@@ -91,8 +91,8 @@ server <- function(input,output) {
 			rownames(mat.dbq) = dbgap.query[,2]
 			#Get rid of NA values
 			mat.dbq = mat.dbq[complete.cases(mat.dbq), ]  ###Add something to show NA values later
-
-			heatmap.2(mat.dbq, scale="none", trace="none", dendrogram="none", breaks=seq(scalelow, scalehigh, length.out=101), Rowv=FALSE, Colv=FALSE, col=palette, ColSideColors=group, keysize=0.75, key.par=list(cex=0.5), labCol=FALSE, cexRow=0.5)
+			cexRow = as.numeric(as.character(input$xfontsize))
+			heatmap.2(mat.dbq, scale="none", trace="none", dendrogram="none", breaks=seq(scalelow, scalehigh, length.out=101), Rowv=FALSE, Colv=FALSE, col=palette, ColSideColors=group, keysize=0.75, key.par=list(cex=0.5), labCol=FALSE, cexRow=cexRow)
 			}
 		#If TCGA selected, run TCGA heatmap	
 		if (input$database == "TCGA-Prostate") {
@@ -123,7 +123,7 @@ server <- function(input,output) {
 			group = c(rep("green", 52), rep("orange", 499))
 			#Set heatmap arguments
 			genes = tcga.query[,2]
-			palette = colorRampPalette(c("green", "black", "red"))(n=100)
+			palette = colorRampPalette(c(input$lowcolor, input$midcolor, input$highcolor))(n=100)
 			scalelow = input$range[1]
 			scalehigh = input$range[2]
 			#Make matrix
@@ -131,8 +131,8 @@ server <- function(input,output) {
 			rownames(mat.dbq) = tcga.query[,2]
 			#Get rid of NA values
 			mat.dbq = mat.dbq[complete.cases(mat.dbq), ]  ###Add something to show NA values later
-
-			heatmap.2(mat.dbq, scale="none", trace="none", dendrogram="none", breaks=seq(scalelow, scalehigh, length.out=101), Rowv=FALSE, Colv=FALSE, col=palette, ColSideColors=group, keysize=0.75, key.par=list(cex=0.5), labCol=FALSE, cexRow=0.5)
+			cexRow = as.numeric(as.character(input$xfontsize))
+			heatmap.2(mat.dbq, scale="none", trace="none", dendrogram="none", breaks=seq(scalelow, scalehigh, length.out=101), Rowv=FALSE, Colv=FALSE, col=palette, ColSideColors=group, keysize=0.75, key.par=list(cex=0.5), labCol=FALSE, cexRow=cexRow)
 			}
 	}
 
@@ -158,7 +158,7 @@ server <- function(input,output) {
 				dbgap.query = dbgap.query[order(factor(dbgap.query$Gene_name, levels=GOI)),]
 				}
 			group = c(rep("green", 35), rep("orange", 78), rep("red", 132), rep("darkred", 15))
-			palette = colorRampPalette(c("green", "black", "red"))(n=100)
+			palette = colorRampPalette(c(input$lowcolor, input$midcolor, input$highcolor))(n=100)
 			scalelow = input$range[1]
 			scalehigh = input$range[2]
 			#Make matrix double if only one input gene
@@ -171,7 +171,8 @@ server <- function(input,output) {
 				}
 			#Get rid of NA values
 			#mat.dbq = mat.dbq[complete.cases(mat.dbq), ]  ###Add something to show NA values later,****added, see table output
-			heatmap.2(mat.dbq, scale="none", trace="none", dendrogram="none", breaks=seq(scalelow, scalehigh, length.out=101), Rowv=FALSE, Colv=FALSE, col=palette, ColSideColors=group, keysize=0.75, key.par=list(cex=0.5), labCol=FALSE, cexRow=0.5)
+			cexRow = as.numeric(as.character(input$xfontsize))
+			heatmap.2(mat.dbq, scale="none", trace="none", dendrogram="none", breaks=seq(scalelow, scalehigh, length.out=101), Rowv=FALSE, Colv=FALSE, col=palette, ColSideColors=group, keysize=0.75, key.par=list(cex=0.5), labCol=FALSE, cexRow=cexRow)
 			}
 		#If TCGA selected, use TCGA
 		if (input$database == "TCGA-Prostate") {
@@ -189,7 +190,7 @@ server <- function(input,output) {
 				tcga.query = tcga.query[order(factor(tcga.query$Gene_name, levels=GOI)),]
 				}
 			group = c(rep("green", 52), rep("orange", 499))
-			palette = colorRampPalette(c("green", "black", "red"))(n=100)
+			palette = colorRampPalette(c(input$lowcolor, input$midcolor, input$highcolor))(n=100)
 			scalelow = input$range[1]
 			scalehigh = input$range[2]
 			#Make matrix
@@ -202,7 +203,8 @@ server <- function(input,output) {
 				}
 			#Get rid of NA values
 			#mat.dbq = mat.dbq[complete.cases(mat.dbq), ]  ###Add something to show NA values later,****added, see table output
-			heatmap.2(mat.dbq, scale="none", trace="none", dendrogram="none", breaks=seq(scalelow, scalehigh, length.out=101), Rowv=FALSE, Colv=FALSE, col=palette, ColSideColors=group, keysize=0.75, key.par=list(cex=0.5), labCol=FALSE, cexRow=0.5)
+			cexRow = as.numeric(as.character(input$xfontsize))
+			heatmap.2(mat.dbq, scale="none", trace="none", dendrogram="none", breaks=seq(scalelow, scalehigh, length.out=101), Rowv=FALSE, Colv=FALSE, col=palette, ColSideColors=group, keysize=0.75, key.par=list(cex=0.5), labCol=FALSE, cexRow=cexRow)
 			}		
 	}
 	
