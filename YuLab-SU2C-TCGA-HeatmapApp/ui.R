@@ -5,11 +5,11 @@ library(data.table)
 # See above for the definitions of ui and server
 pageWithSidebar(
 	#App Title
-	titlePanel("Yu Lab SU2C Heatmap Generator"),
+	titlePanel("Yu Lab SU2C/TCGA Heatmap Generator"),
 	
 	sidebarPanel(
 		selectInput("database", h3("Select Database"),
-			choices = list("Select Database...", "SU2C-Prostate", "TCGA-Prostate"),
+			choices = list("Select Database...", "TCGA-Prostate", "SU2C-Prostate", "SU2C-Benign-vs-PCa", "SU2C PCa-vs-CRPC", "SU2C-CRPC-vs-NEPC"),
 			selected = NULL,
 			multiple = FALSE
 			),
@@ -38,7 +38,7 @@ pageWithSidebar(
 		tabsetPanel(
 		tabPanel("Heatmap", h4("Heatmap (Gene Z-score across all samples)"),plotOutput("plot1"), plotOutput("plot2")),
 		tabPanel("Genes", h4("Included Gene List (Ordered)"), tableOutput("table1")),
-		tabPanel("Excluded Genes", h4("Included Gene List (Ordered)"), tableOutput("table2"))
+		tabPanel("Excluded Genes", h4("Genes not found in selected database"), tableOutput("table2"))
 		)
 		)
 	)
