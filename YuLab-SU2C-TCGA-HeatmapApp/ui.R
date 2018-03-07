@@ -2,14 +2,15 @@ library(shiny)
 library(RColorBrewer)
 library(gplots)
 library(data.table)
+library(DT)
 # See above for the definitions of ui and server
 pageWithSidebar(
 	#App Title
-	titlePanel("Yu Lab SU2C/TCGA Heatmap Generator"),
+	titlePanel("Yu Lab Human Prostate Heatmap Generator"),
 	
 	sidebarPanel(
 		selectInput("database", h3("Select Database"),
-			choices = list("Select Database...", "TCGA-Prostate", "SU2C-Prostate", "SU2C-Benign-vs-PCa", "SU2C PCa-vs-CRPC", "SU2C-CRPC-vs-NEPC"),
+			choices = list("Select Database...", "TCGA-Prostate", "DBGAP-Prostate", "DBGAP-Benign-vs-PCa", "DBGAP-PCa-vs-CRPC", "DBGAP-CRPC-vs-NEPC", "GLINSKY_U133A", "VARAMBALLY_GSE3325", "LAPOINTE_GSE3933", "TOMLINS_GSE6099", "YU_GSE6919", "SBONER_GSE16560", "TAYLOR_GSE21034", "LONG_GSE26367", "CAI_GSE32269", "GRASSO_GSE35988", "ROSS_GSE70770", "VANAJA_U133A"),
 			selected = NULL,
 			multiple = FALSE
 			),
@@ -38,7 +39,8 @@ pageWithSidebar(
 		tabsetPanel(
 		tabPanel("Heatmap", h4("Heatmap (Gene Z-score across all samples)"),plotOutput("plot1"), plotOutput("plot2")),
 		tabPanel("Genes", h4("Included Gene List (Ordered)"), tableOutput("table1")),
-		tabPanel("Excluded Genes", h4("Genes not found in selected database"), tableOutput("table2"))
+		tabPanel("Excluded Genes", h4("Genes not found in selected database"), tableOutput("table2")),
+		tabPanel("Datasets Summaries", h4("Summaries of Database Datasets for Analysis:"), DT::dataTableOutput("tableSummary"))
 		)
 		)
 	)
