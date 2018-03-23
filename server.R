@@ -3,40 +3,185 @@
 
 
 server <- function(input,output) {
+	
+	#Create "Instructions" panel:
+	output$text1 <- renderText(
+		{ paste( 
+		'<b>',
+			'<ol>',
+				'<li style="margin:10px 0";>To visualize how your gene set is regulated in prostate disease progression, start by selecting a database to query.</li>',
+				'<li style="margin:10px 0";>To see what each database contains, navigate to the "Datasets Summaries." tab</li>',
+				'<li style="margin:10px 0";>Upload your gene list or choose a list from the "test_gene_sets" folder. Your uploaded gene list must be in the following format:</li>',
+			'</ol>',	
+		'</b>'
+		)}
+	)
+	
+	output$text2 <- renderText(
+		{ paste( 
+		'<p>',
+			'<ul>',
+				'<li style="margin:10px 0";>The first row must contain headers (See Row 1 to the left).</li>',
+				'<li style="margin:10px 0";>The first column (Column A) must contain gene names (gene symbols).</li>',
+				'<li style="margin:10px 0";>If you only have a list of genes, duplicate row one (as shown in Column B).</li>',
+				'<li style="margin:10px 0";>If you have other data like gene expression measurements, these can be left as they are and you don\'t need to duplicate column 1.</li>',
+				'<li style="margin:10px 0";>To make a heatmap of your own data, see the instructions below under "Create a heatmap of your data!"</li>',
+				'<b><li style="margin:10px 0";>Save your data in the "Text (Tab delimited) (*.txt)" format.</li></b>',
+			'</ul>',	
+		'</p>'
+		)}
+	)
+	output$text3 <- renderText(
+		{ paste( 
+		'<b>',
+			'<ol start="4">',
+				'<li style="margin:10px 0";>The "Heatmap" tab will now display the expression of your genes in the tissues of the selected database.</li>',
+				'<li style="margin:10px 0";>By default, these genes will be in the same order as your input list.</li>',
+				'<li style="margin:10px 0";>If you would like to see how these genes correlate with a gene of interest, type in your gene (or genes) in the side bar.</li>',
+				'<ul><li>For example type AR, if you would like to see multiple genes, separate them by a comma: AR,FOXA1,MYCN</li> <li>Typing in a gene will also create a heatmap for that gene that maches up with the main heatmap.</li> <li>Selecting the "Sort gene rows by correlation with GOI?" option will run a pearson R correlation for all genes in the gene set versus your selected gene of interest.  The heatmap rows will be resorted by correlation with your GOI from low to high Pearson R</li></ul>',
+				'<li style="margin:10px 0";>The "Genes" panel provides a table of the gene order in the heatmap and the Pearson R if correlation sort is selected.</li>',
+				'<li style="margin:10px 0";>The "Excluded Genes" panel provides a table of the genes from your list that were not found in the selected database.</li>',
+				'<li style="margin:10px 0";>The generated heatmaps and data can be downloaded by navigating to the bottom of the left sidebar and selecting which data to download.</li>',
+			'</ol>',	
+		'</b>'
+		)}
+	)
+	
+	output$text4 <- renderText(
+		{ paste( 
+		'<b>',
+			'<ol>',
+				'<li style="margin:20px 0";>Format your expression data according to specifications below.</li>',
+			'</ol>',	
+		'</b>'
+		)}
+	)
+	
+	output$text5 <- renderText(
+		{ paste( 
+		'<p>',
+			'<ul>',
+				'<li style="margin:10px 0";>The first row must contain headers (See Row 1 to the left).</li>',
+				'<li style="margin:10px 0";>The first column (Column A) must contain gene names (gene symbols).</li>',
+				'<b><li style="margin:10px 0";>The second column must contain a group number, see the color key to choose a group color label.</li></b>',
+				'<li style="margin:10px 0";>Your expression measurements can be in multiple formats (RPKM, Log2, Z-Score, Normalized Microarray).  Make sure to adjust the heatmap scale accordingly!</li>',
+			'</ul>',	
+		'</p>'
+		)}
+	)
+	
+	output$text6 <- renderText(
+		{ paste( 
+		'<b>',
+			'<ol start="2">',
+				'<li style="margin:10px 0";>Once your data is formatted, upload the .txt file in the same way you would a gene list.</li>',
+				'<li style="margin:10px 0";>Under the "MyData Heatmap Options", choose to "Yes" under "Heatmap from Input?"</li>',
+				'<li style="margin:10px 0";>Navigate to the "MyData Heatmap" Tab, by default the genes will be in the order you provided.</li>',
+				'<li style="margin:10px 0";>You can cluster the genes by choosing "Cluster Rows" = "Yes".</li>',
+				'<li style="margin:10px 0";>Choosinge a normalization method:</li>',
+				'<ul><li>If your data is in RPKM/FPKM or raw normalized values from a microarray experiment you will probably want to choose "Z-Score" or "Log2" as a normalization method.</li> <li>If your data is already in Log2 or Z-Score format, you should choose "Raw".</li> <b><li>IMPORTANT: If you choose Log2, you should adjust the heatmap scale to have a low value of 0!!! The method is a log2(data + 1) adjustment, log2(0+1) = 0! </li></b></ul>',
+				'<li style="margin:10px 0";>The generated heatmaps and data can be downloaded by navigating to the bottom of the left sidebar and selecting "MyData Download Heatmap".</li>',
+			'</ol>',	
+		'</b>'
+		)}
+	)
+	
+	# Import Database, based on user choice
 	databaseInput <- reactive({
 		validate(
     		need(input$database != "Select Database...", "Select which database you would like to analyze") 
     		)
 		inFile <- input$database
-		if (inFile == "SU2C-Prostate") {
-			withProgress(message = "Reading SU2C", detail = "Should take < 1 min! Watch your R session for progress.", value = 0, { 			
-			tbl <- as.data.frame(fread("dbgap_su2c_zscore.txt", sep="\t", header=TRUE, stringsAsFactors=FALSE))
-			incProgress(1)
-				})
-			} else if (inFile == "TCGA-Prostate") {
-				withProgress(message = "Reading TCGA", detail = "Should take < 1 min! Watch your R session for progress.", value = 0, { 
+		if (inFile == "DBGAP-Prostate") {
+			withProgress(message = "Reading DBGAP", detail = "Should take < 1 min! Watch your R session for progress.", value = 0, { 			
+				tbl <- as.data.frame(fread("dbgap_su2c_zscore.txt", sep="\t", header=TRUE, stringsAsFactors=FALSE))
+				incProgress(1)
+			})
+		} else if (inFile == "TCGA-Prostate") {
+			withProgress(message = "Reading TCGA", detail = "Should take < 1 min! Watch your R session for progress.", value = 0, { 
 				tbl <- as.data.frame(fread("TCGA_normal_primary_zscore.txt", sep="\t", header=TRUE, stringsAsFactors=FALSE))
 				incProgress(1)
-				})
-			} else if (inFile == "SU2C-Benign-vs-PCa") {
-				withProgress(message = "Reading SU2C-Benign-vs-PCa", detail = "Should take < 1 min! Watch your R session for progress.", value = 0, { 
+			})
+		} else if (inFile == "DBGAP-Benign-vs-PCa") {
+			withProgress(message = "Reading DBGAP-Benign-vs-PCa", detail = "Should take < 1 min! Watch your R session for progress.", value = 0, { 
 				tbl <- as.data.frame(fread("dbgap_su2c_zscore_benign-v-pca.txt", sep="\t", header=TRUE, stringsAsFactors=FALSE))
 				incProgress(1)
-				})
-			} else if (inFile == "SU2C-PCa-vs-CRPC") {
-				withProgress(message = "Reading SU2C-PCa-vs-CRPC", detail = "Should take < 1 min! Watch your R session for progress.", value = 0, { 
+			})
+		} else if (inFile == "DBGAP-PCa-vs-CRPC") {
+			withProgress(message = "Reading DBGAP-PCa-vs-CRPC", detail = "Should take < 1 min! Watch your R session for progress.", value = 0, { 
 				tbl <- as.data.frame(fread("dbgap_su2c_zscore_pca-v-crpc.txt", sep="\t", header=TRUE, stringsAsFactors=FALSE))
 				incProgress(1)
-				})
-			} else if (inFile == "SU2C-CRPC-vs-NEPC") {
-				withProgress(message = "Reading SU2C-PCa-vs-CRPC", detail = "Should take < 1 min! Watch your R session for progress.", value = 0, { 
+			})
+		} else if (inFile == "DBGAP-CRPC-vs-NEPC") {
+			withProgress(message = "Reading DBGAP-CRPC-vs-NEPC", detail = "Should take < 1 min! Watch your R session for progress.", value = 0, { 
 				tbl <- as.data.frame(fread("dbgap_su2c_zscore_crpc-v-nepc.txt", sep="\t", header=TRUE, stringsAsFactors=FALSE))
 				incProgress(1)
-				})
-			}
+			})
+		} else if (inFile == "GLINSKY_U133A") {
+			withProgress(message = "Reading GLINSKY_U133A", detail = "Should take < 1 min! Watch your R session for progress.", value = 0, { 
+				tbl <- as.data.frame(fread("./datasets/LAB_GLINSKY_U133A_z-score.txt", sep="\t", header=TRUE, stringsAsFactors=FALSE))
+				incProgress(1)
+			})
+		} else if (inFile == "VARAMBALLY_GSE3325") {
+			withProgress(message = "Reading VARAMBALLY_GSE3325", detail = "Should take < 1 min! Watch your R session for progress.", value = 0, { 
+				tbl <- as.data.frame(fread("./datasets/LAB_GSE3325_VARAM_z-score.txt", sep="\t", header=TRUE, stringsAsFactors=FALSE))
+				incProgress(1)
+			})
+		} else if (inFile == "LAPOINTE_GSE3933") {
+			withProgress(message = "Reading LAPOINTE_GSE3933", detail = "Should take < 1 min! Watch your R session for progress.", value = 0, { 
+				tbl <- as.data.frame(fread("./datasets/LAB_GSE3933_LAPOINTE_z-score.txt", sep="\t", header=TRUE, stringsAsFactors=FALSE))
+				incProgress(1)
+			})
+		} else if (inFile == "TOMLINS_GSE6099") {
+			withProgress(message = "Reading TOMLINS_GSE6099", detail = "Should take < 1 min! Watch your R session for progress.", value = 0, { 
+				tbl <- as.data.frame(fread("./datasets/LAB_GSE6099_TOMLINS_z-score.txt", sep="\t", header=TRUE, stringsAsFactors=FALSE))
+				incProgress(1)
+			})
+		} else if (inFile == "YU_GSE6919") {
+			withProgress(message = "Reading YU_GSE6919", detail = "Should take < 1 min! Watch your R session for progress.", value = 0, { 
+				tbl <- as.data.frame(fread("./datasets/LAB_GSE6919_YU_z-score.txt", sep="\t", header=TRUE, stringsAsFactors=FALSE))
+				incProgress(1)
+			})
+		} else if (inFile == "SBONER_GSE16560") {
+			withProgress(message = "Reading SBONER_GSE16560", detail = "Should take < 1 min! Watch your R session for progress.", value = 0, { 
+				tbl <- as.data.frame(fread("./datasets/LAB_GSE16560_SBONER_z-score.txt", sep="\t", header=TRUE, stringsAsFactors=FALSE))
+				incProgress(1)
+			})
+		} else if (inFile == "TAYLOR_GSE21034") {
+			withProgress(message = "Reading TAYLOR_GSE21034", detail = "Should take < 1 min! Watch your R session for progress.", value = 0, { 
+				tbl <- as.data.frame(fread("./datasets/LAB_GSE21034_TAYLOR_z-score.txt", sep="\t", header=TRUE, stringsAsFactors=FALSE))
+				incProgress(1)
+			})
+		} else if (inFile == "LONG_GSE26367") {
+			withProgress(message = "Reading LONG_GSE26367", detail = "Should take < 1 min! Watch your R session for progress.", value = 0, { 
+				tbl <- as.data.frame(fread("./datasets/LAB_GSE26367_LONG_z-score.txt", sep="\t", header=TRUE, stringsAsFactors=FALSE))
+				incProgress(1)
+			})
+		} else if (inFile == "CAI_GSE32269") {
+			withProgress(message = "Reading CAI_GSE32269", detail = "Should take < 1 min! Watch your R session for progress.", value = 0, { 
+				tbl <- as.data.frame(fread("./datasets/LAB_GSE32269_CAI_z-score.txt", sep="\t", header=TRUE, stringsAsFactors=FALSE))
+				incProgress(1)
+			})
+		} else if (inFile == "GRASSO_GSE35988") {
+			withProgress(message = "Reading GRASSO_GSE35988", detail = "Should take < 1 min! Watch your R session for progress.", value = 0, { 
+				tbl <- as.data.frame(fread("./datasets/LAB_GSE35988_GRASSO_z-score.txt", sep="\t", header=TRUE, stringsAsFactors=FALSE))
+				incProgress(1)
+			})
+		} else if (inFile == "ROSS_GSE70770") {
+			withProgress(message = "Reading ROSS_GSE70770", detail = "Should take < 1 min! Watch your R session for progress.", value = 0, { 
+				tbl <- as.data.frame(fread("./datasets/LAB_GSE70770_ROSS_z-score.txt", sep="\t", header=TRUE, stringsAsFactors=FALSE))
+				incProgress(1)
+			})
+		} else if (inFile == "VANAJA_U133A") {
+			withProgress(message = "Reading VANAJA_U133A", detail = "Should take < 1 min! Watch your R session for progress.", value = 0, { 
+				tbl <- as.data.frame(fread("./datasets/LAB_VANAJA_U133A_z-score.txt", sep="\t", header=TRUE, stringsAsFactors=FALSE))
+				incProgress(1)
+			})
+		}
 		return(tbl)
-		})
+	})
 	
+	#Upload user file
 	datasetInput <- reactive({
 		validate(
     		need(input$file1 != 0, "To begin drawing a heatmap, please select a file for input") 
@@ -46,8 +191,9 @@ server <- function(input,output) {
 			return(NULL)
 		tbl <- as.data.frame(fread(inFile$datapath, sep="\t", header=TRUE, stringsAsFactors=FALSE))
 		return(tbl)
-		})
-		
+	})
+	
+	#User input Gene of Interest
 	geneInput <- reactive({
 		validate(
     		need(input$GOI != "", "Enter a gene of interest, or genes seperated by commas (i.e. FOXA1,AR,CXCR7)") 
@@ -56,890 +202,371 @@ server <- function(input,output) {
 		if (is.null(inGOI))
 			return(NULL)
 		return(inGOI)
-		})
-		
+	})
+	
+	#Does user want to resort heatmap by correlation with gene of interest?
 	correlInput <- reactive({
 		inCorrel <- input$correlationSort
 		return(inCorrel)
-		})	
+	})
+
+	#Make heatmap of user uploaded data
+	doInputHeat <- reactive({
+		doHeat <- input$doUserHeatmap
+		return(doHeat)
+	})
 	
+	#Draw the main heatmap using database selected
 	drawHeatmap <- function() {
 		selectDB <- databaseInput()
 		query <- datasetInput()
 		correlate <- correlInput()
-		#___________________________________________________________________________________
-		#If SU2C selected, run SU2C heatmap
-		if (input$database == "SU2C-Prostate") {
-			dbgap <- selectDB
+				
+			data.column = which(colnames(selectDB) == "Gene_name") + 1 #Data starts after Gene_name column, so add 1, for index position
+			group = c(rep("green", sum(selectDB[1,] == -2)), rep("orange", sum(selectDB[1,] == -1)), rep("black", sum(selectDB[1,] == 0)), rep("red", sum(selectDB[1,] == 1)), rep("darkred", sum(selectDB[1,] == 2)))
 		#If user put in a gene to sort by, use it to resort dbgap:
-			if (unlist(strsplit(input$GOI,","))[1] %in% dbgap[,2]) {
-				rowOfGene = which(dbgap[,2] == unlist(strsplit(input$GOI,","))[1])
-				dbgap.tmp = dbgap[,3:262]
+			if (unlist(strsplit(input$GOI,","))[1] %in% selectDB[,"Gene_name"]) {
+				rowOfGene = which(selectDB[,"Gene_name"] == unlist(strsplit(input$GOI,","))[1])
+				selectDB.tmp = selectDB[,(data.column):(ncol(selectDB))] #Get just the data for reordering
 				#Row 1 contains groupings!!!
-				dbgap.tmp = dbgap.tmp[,order(dbgap.tmp[1,], dbgap.tmp[rowOfGene,])]
-				dbgap = cbind(dbgap[,1:2], dbgap.tmp)
-				}
+				selectDB.tmp = selectDB.tmp[,order(selectDB.tmp[1,], selectDB.tmp[rowOfGene,])]
+				selectDB = cbind("Gene_name"=selectDB$Gene_name, selectDB.tmp)
+				data.column = which(colnames(selectDB) == "Gene_name") + 1 #Data starts after Gene_name column, so add 1, for index position
+			}
 			#Filter dbgap with query
-			dbgap.query = dbgap[which(dbgap[,2] %in% query[,1]),]
+			selectDB.query = selectDB[which(selectDB[,"Gene_name"] %in% query[,1]),]
 			#Reorder to match query order
-			dbgap.query = dbgap.query[match(query[,1],dbgap.query[,2]), ]
+			selectDB.query = selectDB.query[match(query[,1],selectDB.query[,"Gene_name"]), ]
 			#If correlation plot is wanted, find correlations and sort!
-			if (correlate == TRUE & (unlist(strsplit(input$GOI,","))[1] %in% dbgap[,2])) {
-				genedf = dbgap[which(dbgap[,2] == unlist(strsplit(input$GOI,","))[1]),]
-				t.dbgap.query = t(as.matrix(dbgap.query[,3:262]))
-				colnames(t.dbgap.query) = dbgap.query[,2]
-				t.genedf = t(as.matrix(genedf[,3:262]))
-				colnames(t.genedf) = genedf[,2]
-				correl.mat = t(cor(t.genedf,t.dbgap.query))
+			if (correlate == TRUE & (unlist(strsplit(input$GOI,","))[1] %in% selectDB[,"Gene_name"])) {
+				genedf = selectDB[which(selectDB[,"Gene_name"] == unlist(strsplit(input$GOI,","))[1]),]
+				t.selectDB.query = t(as.matrix(selectDB.query[,(data.column):(ncol(selectDB.query))]))
+				colnames(t.selectDB.query) = selectDB.query[,"Gene_name"]
+				t.genedf = t(as.matrix(genedf[,(data.column):(ncol(genedf))]))
+				colnames(t.genedf) = genedf[,"Gene_name"]
+				correl.mat = t(cor(t.genedf,t.selectDB.query))
 				correl.mat = as.data.frame(cbind(correl.mat, correl.mat))
 				correl.mat = correl.mat[order(correl.mat[,2]),]
-				dbgap.query = dbgap.query[match(rownames(correl.mat),dbgap.query[,2]),]
-				}
+				selectDB.query = selectDB.query[match(rownames(correl.mat),selectDB.query[,"Gene_name"]),]
+			}
 			
-			group = c(rep("green", 35), rep("orange", 78), rep("red", 132), rep("darkred", 15))
 			#Set heatmap arguments
-			genes = dbgap.query[,2]
 			palette = colorRampPalette(c(input$lowcolor, input$midcolor, input$highcolor))(n=100)
 			scalelow = input$range[1]
 			scalehigh = input$range[2]
 			#Make matrix
-			mat.dbq = as.matrix(dbgap.query[,3:262])
-			rownames(mat.dbq) = dbgap.query[,2]
+			mat.dbq = as.matrix(selectDB.query[,(data.column):(ncol(selectDB))])
+			rownames(mat.dbq) = selectDB.query[,"Gene_name"]
 			#Get rid of NA values
 			mat.dbq = mat.dbq[complete.cases(mat.dbq), ]  ###Add something to show NA values later
 			cexRow = as.numeric(as.character(input$xfontsize))
 			heatmap.2(mat.dbq, scale="none", trace="none", dendrogram="none", breaks=seq(scalelow, scalehigh, length.out=101), Rowv=FALSE, Colv=FALSE, col=palette, ColSideColors=group, keysize=0.75, key.par=list(cex=0.5), labCol=FALSE, cexRow=cexRow)
-			}
-		#___________________________________________________________________________________
-		#SU2C-Benign-vs-PCa
-		if (input$database == "SU2C-Benign-vs-PCa") {
-			dbgap.bp <- selectDB
-		#If user put in a gene to sort by, use it to resort dbgap.bp:
-			if (unlist(strsplit(input$GOI,","))[1] %in% dbgap.bp[,2]) {
-				rowOfGene = which(dbgap.bp[,2] == unlist(strsplit(input$GOI,","))[1])
-				dbgap.bp.tmp = dbgap.bp[,3:115]
-				#Row 1 contains groupings!!!
-				dbgap.bp.tmp = dbgap.bp.tmp[,order(dbgap.bp.tmp[1,], dbgap.bp.tmp[rowOfGene,])]
-				dbgap.bp = cbind(dbgap.bp[,1:2], dbgap.bp.tmp)
-				}
-			#Filter dbgap.bp with query
-			dbgap.bp.query = dbgap.bp[which(dbgap.bp[,2] %in% query[,1]),]
-			#Reorder to match query order
-			dbgap.bp.query = dbgap.bp.query[match(query[,1],dbgap.bp.query[,2]), ]
-			#If correlation plot is wanted, find correlations and sort!
-			if (correlate == TRUE & (unlist(strsplit(input$GOI,","))[1] %in% dbgap.bp[,2])) {
-				genedf = dbgap.bp[which(dbgap.bp[,2] == unlist(strsplit(input$GOI,","))[1]),]
-				t.dbgap.bp.query = t(as.matrix(dbgap.bp.query[,3:115]))
-				colnames(t.dbgap.bp.query) = dbgap.bp.query[,2]
-				t.genedf = t(as.matrix(genedf[,3:115]))
-				colnames(t.genedf) = genedf[,2]
-				correl.mat = t(cor(t.genedf,t.dbgap.bp.query))
-				correl.mat = as.data.frame(cbind(correl.mat, correl.mat))
-				correl.mat = correl.mat[order(correl.mat[,2]),]
-				dbgap.bp.query = dbgap.bp.query[match(rownames(correl.mat),dbgap.bp.query[,2]),]
-				}
-			
-			group = c(rep("green", 35), rep("orange", 78))
-			#Set heatmap arguments
-			genes = dbgap.bp.query[,2]
-			palette = colorRampPalette(c(input$lowcolor, input$midcolor, input$highcolor))(n=100)
-			scalelow = input$range[1]
-			scalehigh = input$range[2]
-			#Make matrix
-			mat.dbq = as.matrix(dbgap.bp.query[,3:115])
-			rownames(mat.dbq) = dbgap.bp.query[,2]
-			#Get rid of NA values
-			mat.dbq = mat.dbq[complete.cases(mat.dbq), ]  ###Add something to show NA values later
-			cexRow = as.numeric(as.character(input$xfontsize))
-			heatmap.2(mat.dbq, scale="none", trace="none", dendrogram="none", breaks=seq(scalelow, scalehigh, length.out=101), Rowv=FALSE, Colv=FALSE, col=palette, ColSideColors=group, keysize=0.75, key.par=list(cex=0.5), labCol=FALSE, cexRow=cexRow)
-			}
-		#___________________________________________________________________________________
-		#SU2C-PCa-vs-CRPC
-		if (input$database == "SU2C-PCa-vs-CRPC") {
-			dbgap.pc <- selectDB
-		#If user put in a gene to sort by, use it to resort dbgap.pc:
-			if (unlist(strsplit(input$GOI,","))[1] %in% dbgap.pc[,2]) {
-				rowOfGene = which(dbgap.pc[,2] == unlist(strsplit(input$GOI,","))[1])
-				dbgap.pc.tmp = dbgap.pc[,3:212]
-				#Row 1 contains groupings!!!
-				dbgap.pc.tmp = dbgap.pc.tmp[,order(dbgap.pc.tmp[1,], dbgap.pc.tmp[rowOfGene,])]
-				dbgap.pc = cbind(dbgap.pc[,1:2], dbgap.pc.tmp)
-				}
-			#Filter dbgap.pc with query
-			dbgap.pc.query = dbgap.pc[which(dbgap.pc[,2] %in% query[,1]),]
-			#Reorder to match query order
-			dbgap.pc.query = dbgap.pc.query[match(query[,1],dbgap.pc.query[,2]), ]
-			#If correlation plot is wanted, find correlations and sort!
-			if (correlate == TRUE & (unlist(strsplit(input$GOI,","))[1] %in% dbgap.pc[,2])) {
-				genedf = dbgap.pc[which(dbgap.pc[,2] == unlist(strsplit(input$GOI,","))[1]),]
-				t.dbgap.pc.query = t(as.matrix(dbgap.pc.query[,3:212]))
-				colnames(t.dbgap.pc.query) = dbgap.pc.query[,2]
-				t.genedf = t(as.matrix(genedf[,3:212]))
-				colnames(t.genedf) = genedf[,2]
-				correl.mat = t(cor(t.genedf,t.dbgap.pc.query))
-				correl.mat = as.data.frame(cbind(correl.mat, correl.mat))
-				correl.mat = correl.mat[order(correl.mat[,2]),]
-				dbgap.pc.query = dbgap.pc.query[match(rownames(correl.mat),dbgap.pc.query[,2]),]
-				}
-			
-			group = c(rep("orange", 78), rep("red", 132))
-			#Set heatmap arguments
-			genes = dbgap.pc.query[,2]
-			palette = colorRampPalette(c(input$lowcolor, input$midcolor, input$highcolor))(n=100)
-			scalelow = input$range[1]
-			scalehigh = input$range[2]
-			#Make matrix
-			mat.dbq = as.matrix(dbgap.pc.query[,3:212])
-			rownames(mat.dbq) = dbgap.pc.query[,2]
-			#Get rid of NA values
-			mat.dbq = mat.dbq[complete.cases(mat.dbq), ]  ###Add something to show NA values later
-			cexRow = as.numeric(as.character(input$xfontsize))
-			heatmap.2(mat.dbq, scale="none", trace="none", dendrogram="none", breaks=seq(scalelow, scalehigh, length.out=101), Rowv=FALSE, Colv=FALSE, col=palette, ColSideColors=group, keysize=0.75, key.par=list(cex=0.5), labCol=FALSE, cexRow=cexRow)
-			}
-		#___________________________________________________________________________________
-		#SU2C-CRPC-vs-NEPC
-		if (input$database == "SU2C-CRPC-vs-NEPC") {
-			dbgap.cn <- selectDB
-		#If user put in a gene to sort by, use it to resort dbgap.cn:
-			if (unlist(strsplit(input$GOI,","))[1] %in% dbgap.cn[,2]) {
-				rowOfGene = which(dbgap.cn[,2] == unlist(strsplit(input$GOI,","))[1])
-				dbgap.cn.tmp = dbgap.cn[,3:149]
-				#Row 1 contains groupings!!!
-				dbgap.cn.tmp = dbgap.cn.tmp[,order(dbgap.cn.tmp[1,], dbgap.cn.tmp[rowOfGene,])]
-				dbgap.cn = cbind(dbgap.cn[,1:2], dbgap.cn.tmp)
-				}
-			#Filter dbgap.cn with query
-			dbgap.cn.query = dbgap.cn[which(dbgap.cn[,2] %in% query[,1]),]
-			#Reorder to match query order
-			dbgap.cn.query = dbgap.cn.query[match(query[,1],dbgap.cn.query[,2]), ]
-			#If correlation plot is wanted, find correlations and sort!
-			if (correlate == TRUE & (unlist(strsplit(input$GOI,","))[1] %in% dbgap.cn[,2])) {
-				genedf = dbgap.cn[which(dbgap.cn[,2] == unlist(strsplit(input$GOI,","))[1]),]
-				t.dbgap.cn.query = t(as.matrix(dbgap.cn.query[,3:149]))
-				colnames(t.dbgap.cn.query) = dbgap.cn.query[,2]
-				t.genedf = t(as.matrix(genedf[,3:149]))
-				colnames(t.genedf) = genedf[,2]
-				correl.mat = t(cor(t.genedf,t.dbgap.cn.query))
-				correl.mat = as.data.frame(cbind(correl.mat, correl.mat))
-				correl.mat = correl.mat[order(correl.mat[,2]),]
-				dbgap.cn.query = dbgap.cn.query[match(rownames(correl.mat),dbgap.cn.query[,2]),]
-				}
-			
-			group = c(rep("red", 132), rep("darkred", 15))
-			#Set heatmap arguments
-			genes = dbgap.cn.query[,2]
-			palette = colorRampPalette(c(input$lowcolor, input$midcolor, input$highcolor))(n=100)
-			scalelow = input$range[1]
-			scalehigh = input$range[2]
-			#Make matrix
-			mat.dbq = as.matrix(dbgap.cn.query[,3:149])
-			rownames(mat.dbq) = dbgap.cn.query[,2]
-			#Get rid of NA values
-			mat.dbq = mat.dbq[complete.cases(mat.dbq), ]  ###Add something to show NA values later
-			cexRow = as.numeric(as.character(input$xfontsize))
-			heatmap.2(mat.dbq, scale="none", trace="none", dendrogram="none", breaks=seq(scalelow, scalehigh, length.out=101), Rowv=FALSE, Colv=FALSE, col=palette, ColSideColors=group, keysize=0.75, key.par=list(cex=0.5), labCol=FALSE, cexRow=cexRow)
-			}
-		#___________________________________________________________________________________
-		#If TCGA selected, run TCGA heatmap	
-		if (input$database == "TCGA-Prostate") {
-			tcga <- selectDB
-			if (unlist(strsplit(input$GOI,","))[1] %in% tcga[,2]) {
-				rowOfGene = which(tcga[,2] == unlist(strsplit(input$GOI,","))[1])
-				tcga.tmp = tcga[,3:553]
-				tcga.tmp = tcga.tmp[,order(tcga.tmp[1,], tcga.tmp[rowOfGene,])]
-				tcga = cbind(tcga[,1:2], tcga.tmp)
-				#tcga[,3:553] <- tcga[order(tcga[1, 3:553], tcga[rowOfGene,3:553]), 3:553]
-				}
-			#Filter tcga with query
-			tcga.query = tcga[which(tcga[,2] %in% query[,1]),]
-			#Reorder to match query order
-			tcga.query = tcga.query[match(query[,1],tcga.query[,2]), ]
-			if (correlate == TRUE & (unlist(strsplit(input$GOI,","))[1] %in% tcga[,2])) {
-				genedf = tcga[which(tcga[,2] == unlist(strsplit(input$GOI,","))[1]),]
-				t.tcga.query = t(as.matrix(tcga.query[,3:553]))
-				colnames(t.tcga.query) = tcga.query[,2]
-				t.genedf = t(as.matrix(genedf[,3:553]))
-				colnames(t.genedf) = genedf[,2]
-				correl.mat = t(cor(t.genedf,t.tcga.query))
-				correl.mat = as.data.frame(cbind(correl.mat, correl.mat))
-				correl.mat = correl.mat[order(correl.mat[,2]),]
-				tcga.query = tcga.query[match(rownames(correl.mat),tcga.query[,2]),]
-				}
-			
-			group = c(rep("green", 52), rep("orange", 499))
-			#Set heatmap arguments
-			genes = tcga.query[,2]
-			palette = colorRampPalette(c(input$lowcolor, input$midcolor, input$highcolor))(n=100)
-			scalelow = input$range[1]
-			scalehigh = input$range[2]
-			#Make matrix
-			mat.dbq = as.matrix(tcga.query[,3:553])
-			rownames(mat.dbq) = tcga.query[,2]
-			#Get rid of NA values
-			mat.dbq = mat.dbq[complete.cases(mat.dbq), ]  ###Add something to show NA values later
-			cexRow = as.numeric(as.character(input$xfontsize))
-			heatmap.2(mat.dbq, scale="none", trace="none", dendrogram="none", breaks=seq(scalelow, scalehigh, length.out=101), Rowv=FALSE, Colv=FALSE, col=palette, ColSideColors=group, keysize=0.75, key.par=list(cex=0.5), labCol=FALSE, cexRow=cexRow)
-			}
 	}
 
+	#Draw heatmap from gene of interest
 	drawGeneHeatmap <- function() {
 		query <- datasetInput()
 		GOI <- geneInput()
 		GOI <- unlist(strsplit(GOI, ","))
 		selectDB <- databaseInput()
-		#If SU2C selected, use SU2C:
-		if (input$database == "SU2C-Prostate") {
-			dbgap <- selectDB
-			#If user put in a gene to sort by, use it to resort dbgap:
-			if (GOI[1] %in% dbgap[,2]) {
-				rowOfGene = which(dbgap[,2] == GOI[1])
-				dbgap.tmp = dbgap[,3:262]
-				dbgap.tmp = dbgap.tmp[,order(dbgap.tmp[1,], dbgap.tmp[rowOfGene,])]
-				dbgap = cbind(dbgap[,1:2], dbgap.tmp)
-				#dbgap[,3:262] <- dbgap[order(dbgap[1, 3:262], dbgap[rowOfGene,3:262]), 3:262]
-				}
-			#Filter dbgap with query
-			dbgap.query = dbgap[which(dbgap[,2] %in% GOI),]
+		data.column = which(colnames(selectDB) == "Gene_name") + 1 #Data starts after Gene_name column, so add 1, for index position
+		group = c(rep("green", sum(selectDB[1,] == -2)), rep("orange", sum(selectDB[1,] == -1)), rep("black", sum(selectDB[1,] == 0)), rep("red", sum(selectDB[1,] == 1)), rep("darkred", sum(selectDB[1,] == 2)))
+
+		#If user put in a gene to sort by, use it to resort selectDB:
+			if (GOI[1] %in% selectDB[,"Gene_name"]) {
+				rowOfGene = which(selectDB[,"Gene_name"] == GOI[1])
+				selectDB.tmp = selectDB[,(data.column):(ncol(selectDB))]
+				selectDB.tmp = selectDB.tmp[,order(selectDB.tmp[1,], selectDB.tmp[rowOfGene,])]
+				selectDB = cbind("Gene_name"=selectDB$Gene_name, selectDB.tmp)
+				data.column = which(colnames(selectDB) == "Gene_name") + 1 #Data starts after Gene_name column, so add 1, for index position
+			}
+			#Filter selectDB with query
+			selectDB.query = selectDB[which(selectDB[,"Gene_name"] %in% GOI),]
 			if (length(GOI) > 1) { 
-				dbgap.query = dbgap.query[order(factor(dbgap.query$Gene_name, levels=GOI)),]
-				}
-			group = c(rep("green", 35), rep("orange", 78), rep("red", 132), rep("darkred", 15))
+				selectDB.query = selectDB.query[order(factor(selectDB.query$Gene_name, levels=GOI)),]
+			}
 			palette = colorRampPalette(c(input$lowcolor, input$midcolor, input$highcolor))(n=100)
 			scalelow = input$range[1]
 			scalehigh = input$range[2]
 			#Make matrix double if only one input gene
 			if (length(GOI) == 1) {
-				mat.dbq = as.matrix(rbind(dbgap.query[,3:262],dbgap.query[,3:262]), )
+				mat.dbq = as.matrix(rbind(selectDB.query[,(data.column):(ncol(selectDB.query))],selectDB.query[,(data.column):(ncol(selectDB.query))]), )
 				rownames(mat.dbq) = c(GOI, GOI)
-				} else {
-				mat.dbq = as.matrix(dbgap.query[,3:262])
-				rownames(mat.dbq) = dbgap.query[,2]
-				}
-			#Get rid of NA values
-			#mat.dbq = mat.dbq[complete.cases(mat.dbq), ]  ###Add something to show NA values later,****added, see table output
-			cexRow = as.numeric(as.character(input$xfontsize))
-			heatmap.2(mat.dbq, scale="none", trace="none", dendrogram="none", breaks=seq(scalelow, scalehigh, length.out=101), Rowv=FALSE, Colv=FALSE, col=palette, ColSideColors=group, keysize=0.75, key.par=list(cex=0.5), labCol=FALSE, cexRow=cexRow)
+			} else {
+				mat.dbq = as.matrix(selectDB.query[,(data.column):(ncol(selectDB.query))])
+				rownames(mat.dbq) = selectDB.query[,"Gene_name"]
 			}
-		
-		#___________________________________________________________________________________
-		#SU2C-Benign-vs-PCa
-		if (input$database == "SU2C-Benign-vs-PCa") {
-			dbgap.bp <- selectDB
-		#If user put in a gene to sort by, use it to resort dbgap.bp:
-			if (GOI[1] %in% dbgap.bp[,2]) {
-				rowOfGene = which(dbgap.bp[,2] == GOI[1])
-				dbgap.bp.tmp = dbgap.bp[,3:115]
-				#Row 1 contains groupings!!!
-				dbgap.bp.tmp = dbgap.bp.tmp[,order(dbgap.bp.tmp[1,], dbgap.bp.tmp[rowOfGene,])]
-				dbgap.bp = cbind(dbgap.bp[,1:2], dbgap.bp.tmp)
-				}
-			#Filter dbgap.bp with query
-			dbgap.bp.query = dbgap.bp[which(dbgap.bp[,2] %in% GOI),]
-			if (length(GOI) > 1) { 
-				dbgap.bp.query = dbgap.bp.query[order(factor(dbgap.bp.query$Gene_name, levels=GOI)),]
-				}
-			group = c(rep("green", 35), rep("orange", 78))
-			palette = colorRampPalette(c(input$lowcolor, input$midcolor, input$highcolor))(n=100)
-			scalelow = input$range[1]
-			scalehigh = input$range[2]
-			#Make matrix double if only one input gene
-			if (length(GOI) == 1) {
-				mat.dbq = as.matrix(rbind(dbgap.bp.query[,3:115],dbgap.bp.query[,3:115]), )
-				rownames(mat.dbq) = c(GOI, GOI)
-				} else {
-				mat.dbq = as.matrix(dbgap.bp.query[,3:115])
-				rownames(mat.dbq) = dbgap.bp.query[,2]
-				}
 			#Get rid of NA values
 			#mat.dbq = mat.dbq[complete.cases(mat.dbq), ]  ###Add something to show NA values later,****added, see table output
 			cexRow = as.numeric(as.character(input$xfontsize))
-			heatmap.2(mat.dbq, scale="none", trace="none", dendrogram="none", breaks=seq(scalelow, scalehigh, length.out=101), Rowv=FALSE, Colv=FALSE, col=palette, ColSideColors=group, keysize=0.75, key.par=list(cex=0.5), labCol=FALSE, cexRow=cexRow)
-			}
-		#___________________________________________________________________________________
-		#SU2C-PCa-vs-CRPC
-		if (input$database == "SU2C-PCa-vs-CRPC") {
-			dbgap.pc <- selectDB
-			#If user put in a gene to sort by, use it to resort dbgap.pc:
-			if (GOI[1] %in% dbgap.pc[,2]) {
-				rowOfGene = which(dbgap.pc[,2] == GOI[1])
-				dbgap.pc.tmp = dbgap.pc[,3:212]
-				dbgap.pc.tmp = dbgap.pc.tmp[,order(dbgap.pc.tmp[1,], dbgap.pc.tmp[rowOfGene,])]
-				dbgap.pc = cbind(dbgap.pc[,1:2], dbgap.pc.tmp)
-				#dbgap.pc[,3:212] <- dbgap.pc[order(dbgap.pc[1, 3:212], dbgap.pc[rowOfGene,3:212]), 3:212]
-				}
-			#Filter dbgap.pc with query
-			dbgap.pc.query = dbgap.pc[which(dbgap.pc[,2] %in% GOI),]
-			if (length(GOI) > 1) { 
-				dbgap.pc.query = dbgap.pc.query[order(factor(dbgap.pc.query$Gene_name, levels=GOI)),]
-				}
-			group = c(rep("orange", 78), rep("red", 132))
-			palette = colorRampPalette(c(input$lowcolor, input$midcolor, input$highcolor))(n=100)
-			scalelow = input$range[1]
-			scalehigh = input$range[2]
-			#Make matrix double if only one input gene
-			if (length(GOI) == 1) {
-				mat.dbq = as.matrix(rbind(dbgap.pc.query[,3:212],dbgap.pc.query[,3:212]), )
-				rownames(mat.dbq) = c(GOI, GOI)
-				} else {
-				mat.dbq = as.matrix(dbgap.pc.query[,3:212])
-				rownames(mat.dbq) = dbgap.pc.query[,2]
-				}
-			#Get rid of NA values
-			#mat.dbq = mat.dbq[complete.cases(mat.dbq), ]  ###Add something to show NA values later,****added, see table output
-			cexRow = as.numeric(as.character(input$xfontsize))
-			heatmap.2(mat.dbq, scale="none", trace="none", dendrogram="none", breaks=seq(scalelow, scalehigh, length.out=101), Rowv=FALSE, Colv=FALSE, col=palette, ColSideColors=group, keysize=0.75, key.par=list(cex=0.5), labCol=FALSE, cexRow=cexRow)
-			}
-		#___________________________________________________________________________________
-		#SU2C-CRPC-vs-NEPC
-		if (input$database == "SU2C-CRPC-vs-NEPC") {
-			dbgap.cn <- selectDB
-			#If user put in a gene to sort by, use it to resort dbgap.cn:
-			if (GOI[1] %in% dbgap.cn[,2]) {
-				rowOfGene = which(dbgap.cn[,2] == GOI[1])
-				dbgap.cn.tmp = dbgap.cn[,3:149]
-				dbgap.cn.tmp = dbgap.cn.tmp[,order(dbgap.cn.tmp[1,], dbgap.cn.tmp[rowOfGene,])]
-				dbgap.cn = cbind(dbgap.cn[,1:2], dbgap.cn.tmp)
-				#dbgap.cn[,3:149] <- dbgap.cn[order(dbgap.cn[1, 3:149], dbgap.cn[rowOfGene,3:149]), 3:149]
-				}
-			#Filter dbgap.cn with query
-			dbgap.cn.query = dbgap.cn[which(dbgap.cn[,2] %in% GOI),]
-			if (length(GOI) > 1) { 
-				dbgap.cn.query = dbgap.cn.query[order(factor(dbgap.cn.query$Gene_name, levels=GOI)),]
-				}
-			group = c(rep("red", 132), rep("darkred", 15))
-			palette = colorRampPalette(c(input$lowcolor, input$midcolor, input$highcolor))(n=100)
-			scalelow = input$range[1]
-			scalehigh = input$range[2]
-			#Make matrix double if only one input gene
-			if (length(GOI) == 1) {
-				mat.dbq = as.matrix(rbind(dbgap.cn.query[,3:149],dbgap.cn.query[,3:149]), )
-				rownames(mat.dbq) = c(GOI, GOI)
-				} else {
-				mat.dbq = as.matrix(dbgap.cn.query[,3:149])
-				rownames(mat.dbq) = dbgap.cn.query[,2]
-				}
-			#Get rid of NA values
-			#mat.dbq = mat.dbq[complete.cases(mat.dbq), ]  ###Add something to show NA values later,****added, see table output
-			cexRow = as.numeric(as.character(input$xfontsize))
-			heatmap.2(mat.dbq, scale="none", trace="none", dendrogram="none", breaks=seq(scalelow, scalehigh, length.out=101), Rowv=FALSE, Colv=FALSE, col=palette, ColSideColors=group, keysize=0.75, key.par=list(cex=0.5), labCol=FALSE, cexRow=cexRow)
-			}
-		#___________________________________________________________________________________
-		#If TCGA selected, use TCGA
-		if (input$database == "TCGA-Prostate") {
-			tcga <- selectDB
-			if (GOI[1] %in% tcga[,2]) {
-				rowOfGene = which(tcga[,2] == GOI[1])
-				tcga.tmp = tcga[,3:553]
-				tcga.tmp = tcga.tmp[,order(tcga.tmp[1,], tcga.tmp[rowOfGene,])]
-				tcga = cbind(tcga[,1:2], tcga.tmp)
-				#tcga[,3:553] <- tcga[order(tcga[1, 3:553], tcga[rowOfGene,3:553]), 3:553]
-				}
-			#Filter tcga with query
-			tcga.query = tcga[which(tcga[,2] %in% GOI),]
-			if (length(GOI) > 1) { 
-				tcga.query = tcga.query[order(factor(tcga.query$Gene_name, levels=GOI)),]
-				}
-			group = c(rep("green", 52), rep("orange", 499))
-			palette = colorRampPalette(c(input$lowcolor, input$midcolor, input$highcolor))(n=100)
-			scalelow = input$range[1]
-			scalehigh = input$range[2]
-			#Make matrix
-			if (length(GOI) == 1) {
-				mat.dbq = as.matrix(rbind(tcga.query[,3:553],tcga.query[,3:553]), )
-				rownames(mat.dbq) = c(GOI, GOI)
-				} else {
-				mat.dbq = as.matrix(tcga.query[,3:553])
-				rownames(mat.dbq) = tcga.query[,2]
-				}
-			#Get rid of NA values
-			#mat.dbq = mat.dbq[complete.cases(mat.dbq), ]  ###Add something to show NA values later,****added, see table output
-			cexRow = as.numeric(as.character(input$xfontsize))
-			heatmap.2(mat.dbq, scale="none", trace="none", dendrogram="none", breaks=seq(scalelow, scalehigh, length.out=101), Rowv=FALSE, Colv=FALSE, col=palette, ColSideColors=group, keysize=0.75, key.par=list(cex=0.5), labCol=FALSE, cexRow=cexRow)
-			}		
+			heatmap.2(mat.dbq, scale="none", trace="none", dendrogram="none", breaks=seq(scalelow, scalehigh, length.out=101), Rowv=FALSE, Colv=FALSE, col=palette, ColSideColors=group, keysize=0.75, key.par=list(cex=0.5), labCol=FALSE, cexRow=cexRow)		
 	}
 	
+	#Draw user heatmap from uploaded data
+	drawUserHeatmap <- function() {
+		#Run only if user checks box to ask:
+		if (doInputHeat() == "Yes") {
+			query <- datasetInput()
+			#GOI <- geneInput()
+			#GOI <- unlist(strsplit(GOI, ","))
+			group = c(rep("green", sum(query[1,] == -2)), rep("orange", sum(query[1,] == -1)), rep("black", sum(query[1,] == 0)), rep("red", sum(query[1,] == 1)), rep("darkred", sum(query[1,] == 2)))
+			#Process from raw values to z-score
+			rawToZscore <- function(raw) {
+				#Calculate Z-Score: For each row - (Cell - mean)/SD = Z-score units
+				row.means = rowMeans(raw[,2:ncol(raw)], na.rm=TRUE)
+				row.sd = apply(raw[,2:ncol(raw)], 1, function(x) sd(x, na.rm=TRUE))
+				raw[,2:ncol(raw)] = (raw[,2:ncol(raw)] - row.means)/row.sd
+				zscore = rbind(raw[2:nrow(raw),])
+				return(zscore)
+			}
+			
+			rawToRaw <- function(raw) {
+				#Just get rid of group row
+				raw <- raw[2:nrow(raw), ]
+				return(raw)
+			}
+			
+			rawToLog2 <- function(raw) {
+				#Just transform data to log2 + 1
+				raw[2:nrow(raw), 2:ncol(raw)] <- log2(raw[2:nrow(raw), 2:ncol(raw)] + 1)
+				#Already got groups so drop groups
+				log2 <- raw[2:nrow(raw),]
+				return(log2)
+			}
+			
+			#Create matrix and options for heatmap - run as function
+			returnHeat <- function(df) {
+				#Get matrix
+				mat = as.matrix(df[,2:ncol(query)])
+				rownames(mat) = df[,1]
+				colnames(mat) = colnames(df)[2:ncol(query)]
+				#Heatmap options:
+				palette = colorRampPalette(c(input$lowcolor, input$midcolor, input$highcolor))(n=100)
+				scalelow = input$range[1]
+				scalehigh = input$range[2]
+				cexRow = as.numeric(as.character(input$xfontsize))
+				#Cluster rows?
+				if (input$userCluster == "Yes") {
+					Rowv=TRUE
+				} else {
+					Rowv=FALSE
+				}
+				#Cluster columns?
+				if (input$userClusterCol == "Yes") {
+					Colv=TRUE
+					
+				} else {
+					Colv=FALSE
+				}
+				#Set dendrogram
+				if (input$userCluster == "Yes" & input$userClusterCol == "Yes") {
+					dendrogram = "both"
+				} else if (input$userCluster == "Yes" & input$userClusterCol == "No"){
+					dendrogram = "row"
+				} else if (input$userCluster == "No" & input$userClusterCol == "Yes") {
+					dendrogram = "column"
+				} else {
+					dendrogram = "none"
+				}
+				
+				#Run Heatmap:
+				userheat = heatmap.2(mat, scale = "none", trace="none", dendrogram=dendrogram, breaks=seq(scalelow, scalehigh, length.out=101), Rowv=Rowv, Colv=Colv, col=palette, ColSideColors=group, keysize=0.75, key.par = list(cex=0.5), labCol=colnames(mat), cexRow=cexRow)
+				# Get table of genes (ordered to match heatmap, set global variable to be used by Table 3
+				Genes_Order <- rownames(mat)[userheat$rowInd]
+				output$table3 <- renderTable({
+					return(cbind(Genes_Order))
+				})
+			}
+			
+			processData <- function(df) {
+				#Normalize data based on choices to user: "Z-Score", "Raw", "Log2"
+				if (input$normalize == "Z-Score") {
+					df <- rawToZscore(df)
+				} else if (input$normalize == "Raw") {
+					df <- rawToRaw(df)
+				} else if (input$normalize == "Log2") {
+					df <- rawToLog2(df)
+				}
+				return(df)			
+			}
+			query <- processData(query)	
+			# Run heatmap and set as var (will still output heatmap), then grab gene list set as global var to plot
+			returnHeat(query)
+		}
+	}
+	
+	#Output plot1, database heatmap
 	output$plot1 <- renderPlot({
 		drawHeatmap()
 	})
 	
+	#Output plot2 Gene(s) of interest heatmap
 	output$plot2 <- renderPlot({
 		drawGeneHeatmap()
 	})
+	
+	#Output plot3, user heatmap of uploaded data
+	output$plot3 <- renderPlot({
+		drawUserHeatmap()
+	})
 
+	#Table 1 = "Genes included" tab, show genes that matched from user upload list to selected database
+	# Can move this into the Heatmap Function**************
 	output$table1 <- renderTable({
 		query <- datasetInput()
 		selectDB <- databaseInput()
 		correlate = correlInput()
-		#If SU2C, use SU2C dbgap:
-		if (input$database == "SU2C-Prostate") {
-			dbgap = selectDB
-			#Filter dbgap with query
-			dbgap.query = dbgap[which(dbgap[,2] %in% query[,1]),]
+		data.column = which(colnames(selectDB) == "Gene_name") + 1 #Data starts after Gene_name column, so add 1, for index position
+		#If SU2C, use SU2C selectDB:
+			#Filter selectDB with query
+			selectDB.query = selectDB[which(selectDB[,"Gene_name"] %in% query[,1]),]
 			#Reorder to match query order
-			dbgap.query = dbgap.query[match(query[,1],dbgap.query[,2]), ]
+			selectDB.query = selectDB.query[match(query[,1],selectDB.query[,"Gene_name"]), ]
 			#If correlation plot is wanted, find correlations and sort!
-			if ((input$GOI != "") & (correlate == TRUE) & (unlist(strsplit(input$GOI,","))[1] %in% dbgap[,2])) {
-				genedf = dbgap[which(dbgap[,2] == unlist(strsplit(input$GOI,","))[1]),]
-				t.dbgap.query = t(as.matrix(dbgap.query[,3:262]))
-				colnames(t.dbgap.query) = dbgap.query[,2]
-				t.genedf = t(as.matrix(genedf[,3:262]))
-				colnames(t.genedf) = genedf[,2]
-				correl.mat = t(cor(t.genedf,t.dbgap.query))
-				correl.mat = as.data.frame(cbind(correl.mat, correl.mat))
-				correl.mat = correl.mat[order(correl.mat[,2]),]
-				dbgap.query = dbgap.query[match(rownames(correl.mat),dbgap.query[,2]),]
-				return(cbind(genes=rownames(correl.mat),Pearson.R=correl.mat[,1]))
-				}
-			#Set heatmap arguments
-			genes = dbgap.query[,2]
-			#Make matrix
-			mat.dbq = as.matrix(dbgap.query[,3:262])
-			rownames(mat.dbq) = dbgap.query[,2]
-			#Get rid of NA values
-			mat.dbq = mat.dbq[complete.cases(mat.dbq), ]  ###Add something to show NA values later
-			if (correlate == FALSE) {return(cbind(Genes=rownames(mat.dbq)))}
-			}
-		#___________________________________________________________________________________
-		#SU2C-Benign-vs-PCa
-		if (input$database == "SU2C-Benign-vs-PCa") {
-			dbgap.bp = selectDB
-			#Filter dbgap.bp with query
-			dbgap.bp.query = dbgap.bp[which(dbgap.bp[,2] %in% query[,1]),]
-			#Reorder to match query order
-			dbgap.bp.query = dbgap.bp.query[match(query[,1],dbgap.bp.query[,2]), ]
-			#If correlation plot is wanted, find correlations and sort!
-			if ((input$GOI != "") & (correlate == TRUE) & (unlist(strsplit(input$GOI,","))[1] %in% dbgap.bp[,2])) {
-				genedf = dbgap.bp[which(dbgap.bp[,2] == unlist(strsplit(input$GOI,","))[1]),]
-				t.dbgap.bp.query = t(as.matrix(dbgap.bp.query[,3:115]))
-				colnames(t.dbgap.bp.query) = dbgap.bp.query[,2]
-				t.genedf = t(as.matrix(genedf[,3:115]))
-				colnames(t.genedf) = genedf[,2]
-				correl.mat = t(cor(t.genedf,t.dbgap.bp.query))
-				correl.mat = as.data.frame(cbind(correl.mat, correl.mat))
-				correl.mat = correl.mat[order(correl.mat[,2]),]
-				dbgap.bp.query = dbgap.bp.query[match(rownames(correl.mat),dbgap.bp.query[,2]),]
-				return(cbind(genes=rownames(correl.mat),Pearson.R=correl.mat[,1]))
-				}
-			#Set heatmap arguments
-			genes = dbgap.bp.query[,2]
-			#Make matrix
-			mat.dbq = as.matrix(dbgap.bp.query[,3:115])
-			rownames(mat.dbq) = dbgap.bp.query[,2]
-			#Get rid of NA values
-			mat.dbq = mat.dbq[complete.cases(mat.dbq), ]  ###Add something to show NA values later
-			if (correlate == FALSE) {return(cbind(Genes=rownames(mat.dbq)))}
-			}
-		#___________________________________________________________________________________
-		#SU2C-PCa-vs-CRPC
-		if (input$database == "SU2C-PCa-vs-CRPC") {
-			dbgap.pc = selectDB
-			#Filter dbgap.pc with query
-			dbgap.pc.query = dbgap.pc[which(dbgap.pc[,2] %in% query[,1]),]
-			#Reorder to match query order
-			dbgap.pc.query = dbgap.pc.query[match(query[,1],dbgap.pc.query[,2]), ]
-			#If correlation plot is wanted, find correlations and sort!
-			if ((input$GOI != "") & (correlate == TRUE) & (unlist(strsplit(input$GOI,","))[1] %in% dbgap.pc[,2])) {
-				genedf = dbgap.pc[which(dbgap.pc[,2] == unlist(strsplit(input$GOI,","))[1]),]
-				t.dbgap.pc.query = t(as.matrix(dbgap.pc.query[,3:212]))
-				colnames(t.dbgap.pc.query) = dbgap.pc.query[,2]
-				t.genedf = t(as.matrix(genedf[,3:212]))
-				colnames(t.genedf) = genedf[,2]
-				correl.mat = t(cor(t.genedf,t.dbgap.pc.query))
-				correl.mat = as.data.frame(cbind(correl.mat, correl.mat))
-				correl.mat = correl.mat[order(correl.mat[,2]),]
-				dbgap.pc.query = dbgap.pc.query[match(rownames(correl.mat),dbgap.pc.query[,2]),]
-				return(cbind(genes=rownames(correl.mat),Pearson.R=correl.mat[,1]))
-				}
-			#Set heatmap arguments
-			genes = dbgap.pc.query[,2]
-			#Make matrix
-			mat.dbq = as.matrix(dbgap.pc.query[,3:212])
-			rownames(mat.dbq) = dbgap.pc.query[,2]
-			#Get rid of NA values
-			mat.dbq = mat.dbq[complete.cases(mat.dbq), ]  ###Add something to show NA values later
-			if (correlate == FALSE) {return(cbind(Genes=rownames(mat.dbq)))}
-			}
-		#___________________________________________________________________________________
-		#SU2C-CRPC-vs-NEPC
-		if (input$database == "SU2C-CRPC-vs-NEPC") {
-			dbgap.cn = selectDB
-			#Filter dbgap.cn with query
-			dbgap.cn.query = dbgap.cn[which(dbgap.cn[,2] %in% query[,1]),]
-			#Reorder to match query order
-			dbgap.cn.query = dbgap.cn.query[match(query[,1],dbgap.cn.query[,2]), ]
-			#If correlation plot is wanted, find correlations and sort!
-			if ((input$GOI != "") & (correlate == TRUE) & (unlist(strsplit(input$GOI,","))[1] %in% dbgap.cn[,2])) {
-				genedf = dbgap.cn[which(dbgap.cn[,2] == unlist(strsplit(input$GOI,","))[1]),]
-				t.dbgap.cn.query = t(as.matrix(dbgap.cn.query[,3:149]))
-				colnames(t.dbgap.cn.query) = dbgap.cn.query[,2]
-				t.genedf = t(as.matrix(genedf[,3:149]))
-				colnames(t.genedf) = genedf[,2]
-				correl.mat = t(cor(t.genedf,t.dbgap.cn.query))
-				correl.mat = as.data.frame(cbind(correl.mat, correl.mat))
-				correl.mat = correl.mat[order(correl.mat[,2]),]
-				dbgap.cn.query = dbgap.cn.query[match(rownames(correl.mat),dbgap.cn.query[,2]),]
-				return(cbind(genes=rownames(correl.mat),Pearson.R=correl.mat[,1]))
-				}
-			#Set heatmap arguments
-			genes = dbgap.cn.query[,2]
-			#Make matrix
-			mat.dbq = as.matrix(dbgap.cn.query[,3:149])
-			rownames(mat.dbq) = dbgap.cn.query[,2]
-			#Get rid of NA values
-			mat.dbq = mat.dbq[complete.cases(mat.dbq), ]  ###Add something to show NA values later
-			if (correlate == FALSE) {return(cbind(Genes=rownames(mat.dbq)))}
-			}
-		#If TCGA, use TCGA
-		if (input$database == "TCGA-Prostate") {
-			tcga = selectDB
-			tcga.query = tcga[which(tcga[,2] %in% query[,1]),]
-			#Reorder to match query order
-			tcga.query = tcga.query[match(query[,1],tcga.query[,2]), ]
-			#Reorder to match query order
-			tcga.query = tcga.query[match(query[,1],tcga.query[,2]), ]
-			if ((correlate == TRUE) & (unlist(strsplit(input$GOI,","))[1] %in% tcga[,2])) {
-				genedf = tcga[which(tcga[,2] == unlist(strsplit(input$GOI,","))[1]),]
-				t.tcga.query = t(as.matrix(tcga.query[,3:553]))
-				colnames(t.tcga.query) = tcga.query[,2]
-				t.genedf = t(as.matrix(genedf[,3:553]))
-				colnames(t.genedf) = genedf[,2]
-				correl.mat = t(cor(t.genedf,t.tcga.query))
-				correl.mat = as.data.frame(cbind(correl.mat, correl.mat))
-				correl.mat = correl.mat[order(correl.mat[,2]),]
-				tcga.query = tcga.query[match(rownames(correl.mat),tcga.query[,2]),]
+			if ((input$GOI != "") & (correlate == TRUE) & (unlist(strsplit(input$GOI,","))[1] %in% selectDB[,"Gene_name"])) {
+				genedf = selectDB[which(selectDB[,"Gene_name"] == unlist(strsplit(input$GOI,","))[1]),]
+				t.selectDB.query = t(as.matrix(selectDB.query[,(data.column):(ncol(selectDB.query))]))
+				colnames(t.selectDB.query) = selectDB.query[,"Gene_name"]
+				t.genedf = t(as.matrix(genedf[,(data.column):(ncol(genedf))]))
+				colnames(t.genedf) = genedf[,"Gene_name"]
+				correl.mat = t(cor(t.genedf,t.selectDB.query))
+				correl.mat = as.data.frame(cbind(correl.mat, correl.mat)) # Need two columns to be dataframe, duplicate
+				correl.mat = correl.mat[order(correl.mat[,2]),] # Order by low to high correlation
+				selectDB.query = selectDB.query[match(rownames(correl.mat),selectDB.query[,"Gene_name"]),]
+				correl.mat = correl.mat[complete.cases(correl.mat),] # Get rid of NA values
 				return(cbind(Genes=rownames(correl.mat),Pearson.R=correl.mat[,1]))
-				}
+			}
 			#Set heatmap arguments
-			genes = tcga.query[,2]
+			genes = selectDB.query[,"Gene_name"]
 			#Make matrix
-			mat.dbq = as.matrix(tcga.query[,3:553])
-			rownames(mat.dbq) = tcga.query[,2]
+			mat.dbq = as.matrix(selectDB.query[,(data.column):(ncol(selectDB.query))])
+			rownames(mat.dbq) = selectDB.query[,"Gene_name"]
 			#Get rid of NA values
 			mat.dbq = mat.dbq[complete.cases(mat.dbq), ]  ###Add something to show NA values later
 			if (correlate == FALSE) {return(cbind(Genes=rownames(mat.dbq)))}
-			}
 	})
 
+	#Table 2 - Genes not found from user list in selected database
 	output$table2 <- renderTable({
 		query <- datasetInput()
 		selectDB <- databaseInput()
-		#If SU2C, use SU2C dbgap:
-		if (input$database == "SU2C-Prostate") {
-			dbgap = selectDB
-			#Filter dbgap with query
-			dbgap.query = dbgap[which(dbgap[,2] %in% query[,1]),]
-			#Reorder to match query order
-			dbgap.query = dbgap.query[match(query[,1],dbgap.query[,2]), ]
-			#Set heatmap arguments
-			genes = dbgap.query[,2]
-			#Make matrix
-			mat.dbq = as.matrix(dbgap.query[,3:262])
-			rownames(mat.dbq) = dbgap.query[,2]
-			#Get rid of NA values
-			mat.dbq = mat.dbq[complete.cases(mat.dbq), ]  ###Add something to show NA values later
-			table = subset(query[,1], !(query[,1] %in% rownames(mat.dbq)))
-			}
-		#If SU2C, use SU2C-Benign-vs-PCa dbgap.bp:
-		if (input$database == "SU2C-Benign-vs-PCa") {
-			dbgap.bp = selectDB
-			#Filter dbgap.bp with query
-			dbgap.bp.query = dbgap.bp[which(dbgap.bp[,2] %in% query[,1]),]
-			#Reorder to match query order
-			dbgap.bp.query = dbgap.bp.query[match(query[,1],dbgap.bp.query[,2]), ]
-			#Set heatmap arguments
-			genes = dbgap.bp.query[,2]
-			#Make matrix
-			mat.dbq = as.matrix(dbgap.bp.query[,3:115])
-			rownames(mat.dbq) = dbgap.bp.query[,2]
-			#Get rid of NA values
-			mat.dbq = mat.dbq[complete.cases(mat.dbq), ]  ###Add something to show NA values later
-			table = subset(query[,1], !(query[,1] %in% rownames(mat.dbq)))
-			}
-		#If SU2C, use SU2C-PCa-vs-CRPC dbgap.pc:
-		if (input$database == "SU2C-PCa-vs-CRPC") {
-			dbgap.pc = selectDB
-			#Filter dbgap.pc with query
-			dbgap.pc.query = dbgap.pc[which(dbgap.pc[,2] %in% query[,1]),]
-			#Reorder to match query order
-			dbgap.pc.query = dbgap.pc.query[match(query[,1],dbgap.pc.query[,2]), ]
-			#Set heatmap arguments
-			genes = dbgap.pc.query[,2]
-			#Make matrix
-			mat.dbq = as.matrix(dbgap.pc.query[,3:212])
-			rownames(mat.dbq) = dbgap.pc.query[,2]
-			#Get rid of NA values
-			mat.dbq = mat.dbq[complete.cases(mat.dbq), ]  ###Add something to show NA values later
-			table = subset(query[,1], !(query[,1] %in% rownames(mat.dbq)))
-			}
-		#If SU2C, use SU2C-CRPC-vs-NEPC dbgap.cn:
-		if (input$database == "SU2C-CRPC-vs-NEPC") {
-			dbgap.cn = selectDB
-			#Filter dbgap.cn with query
-			dbgap.cn.query = dbgap.cn[which(dbgap.cn[,2] %in% query[,1]),]
-			#Reorder to match query order
-			dbgap.cn.query = dbgap.cn.query[match(query[,1],dbgap.cn.query[,2]), ]
-			#Set heatmap arguments
-			genes = dbgap.cn.query[,2]
-			#Make matrix
-			mat.dbq = as.matrix(dbgap.cn.query[,3:149])
-			rownames(mat.dbq) = dbgap.cn.query[,2]
-			#Get rid of NA values
-			mat.dbq = mat.dbq[complete.cases(mat.dbq), ]  ###Add something to show NA values later
-			table = subset(query[,1], !(query[,1] %in% rownames(mat.dbq)))
-			}
-		#If TCGA, use TCGA data:
-		if (input$database == "TCGA-Prostate") {
-			tcga = selectDB
-			#Filter tcga with query
-			tcga.query = tcga[which(tcga[,2] %in% query[,1]),]
-			#Reorder to match query order
-			tcga.query = tcga.query[match(query[,1],tcga.query[,2]), ]
-			#Set heatmap arguments
-			genes = tcga.query[,2]
-			#Make matrix
-			mat.dbq = as.matrix(tcga.query[,3:553])
-			rownames(mat.dbq) = tcga.query[,2]
-			#Get rid of NA values
-			mat.dbq = mat.dbq[complete.cases(mat.dbq), ]  ###Add something to show NA values later
-			table = subset(query[,1], !(query[,1] %in% rownames(mat.dbq)))
-			}
-		return(table)
+		data.column = which(colnames(selectDB) == "Gene_name") + 1 #Data starts after Gene_name column, so add 1, for index position
+		return(cbind(Genes= subset(query[,1], !(query[,1] %in% selectDB[,"Gene_name"]))))
 	})
 	
-	output$downloadHeatmap <- downloadHandler(
-	filename <- function() {
-		paste0(
-			basename(unlist(strsplit(input$file1$name, split='.txt', fixed=TRUE))[1]), #Get name of file minus .txt
-			input$database,
-			'-heatmap',
-			'.png', 
-			sep=''
-			)
-		},
-	content <- function(file) {
-		png(file, width = 6, height = 10, units = "in", res = 300)
-		drawHeatmap()
-		dev.off()
+	#Download user heatmap - "MyData")
+	output$downloadUserHeatmap <- downloadHandler(
+		filename <- function() {
+			paste0(
+				basename(unlist(strsplit(input$file1$name, split='.txt', fixed=TRUE))[1]), #Get name of file minus .txt
+				"_",
+				input$normalize,
+				'_heatmap',
+				'.png', 
+				sep=''
+				)
+			},
+		content <- function(file) {
+			png(file, width = 6, height = 10, units ="in", res = 300)
+			drawUserHeatmap()
+			dev.off()
 		}
 	)
 	
+	#Download main heatmap
+	output$downloadHeatmap <- downloadHandler(
+		filename <- function() {
+			paste0(
+				basename(unlist(strsplit(input$file1$name, split='.txt', fixed=TRUE))[1]), #Get name of file minus .txt
+				input$database,
+				'-heatmap',
+				'.png', 
+				sep=''
+				)
+			},
+		content <- function(file) {
+			png(file, width = 6, height = 10, units = "in", res = 300)
+			drawHeatmap()
+			dev.off()
+			}
+	)
+	
+	#Download gene of interest heatmap
 	output$downloadGeneHeatmap <- downloadHandler(
-	filename <- function() {
-		paste0(
-			input$GOI,
-			"_",
-			basename(unlist(strsplit(input$file1$name, split='.txt', fixed=TRUE))[1]), #Get name of file minus .txt
-			"_",
-			input$database,
-			'-heatmap', 
-			'.png', 
-			sep=''
+		filename <- function() {
+			paste0(
+				input$GOI,
+				"_",
+				basename(unlist(strsplit(input$file1$name, split='.txt', fixed=TRUE))[1]), #Get name of file minus .txt
+				"_",
+				input$database,
+				'-heatmap', 
+				'.png', 
+				sep=''
 			)
 		},
 		content <- function(file) {
-		png(file, width = 6, height = 10, units = "in", res = 300)
-		drawGeneHeatmap()
-		dev.off()
+			png(file, width = 6, height = 10, units = "in", res = 300)
+			drawGeneHeatmap()
+			dev.off()
 		}
 	)
 	
+	#Download data matrix, which is zscore data, for selected DB (matched genes from user list)
 	output$downloadDataMatrix <- downloadHandler(
-	filename <- function() {
-		paste0(
-			input$GOI,
-			"_",
-			basename(unlist(strsplit(input$file1$name, split='.txt', fixed=TRUE))[1]), #Get name of file minus .txt
-			"_",
-			input$database,
-			'-heatmap-matrix', 
-			'.txt', 
-			sep=''
+		filename <- function() {
+			paste0(
+				input$GOI,
+				"_",
+				basename(unlist(strsplit(input$file1$name, split='.txt', fixed=TRUE))[1]), #Get name of file minus .txt
+				"_",
+				input$database,
+				'-heatmap-matrix', 
+				'.txt', 
+				sep=''
 			)
-			},
+		},
 		
 		content <- function(file) {
 			query <- datasetInput()
 			selectDB <- databaseInput()
 			correlate = correlInput()
-			#If SU2C, use SU2C data:
-			if (input$database == "SU2C-Prostate") {
-				dbgap = selectDB
-				#If user put in a gene to sort by, use it to resort dbgap:
-				if (unlist(strsplit(input$GOI,","))[1] %in% dbgap[,2]) {
-					rowOfGene = which(dbgap[,2] == unlist(strsplit(input$GOI,","))[1])
-					dbgap.tmp = dbgap[,3:262]
-					dbgap.tmp = dbgap.tmp[,order(dbgap.tmp[1,], dbgap.tmp[rowOfGene,])]
-					dbgap = cbind(dbgap[,1:2], dbgap.tmp)
-					#dbgap[,3:262] <- dbgap[order(dbgap[1, 3:262], dbgap[rowOfGene,3:262]), 3:262]
-					}
-				#Filter dbgap with query
-				dbgap.query = dbgap[which(dbgap[,2] %in% query[,1]),]
-				#Reorder to match query order
-				dbgap.query = dbgap.query[match(query[,1],dbgap.query[,2]), ]
-				#If correlation plot is wanted, find correlations and sort!
-				if (correlate == TRUE & (unlist(strsplit(input$GOI,","))[1] %in% dbgap[,2])) {
-					genedf = dbgap[which(dbgap[,2] == unlist(strsplit(input$GOI,","))[1]),]
-					t.dbgap.query = t(as.matrix(dbgap.query[,3:262]))
-					colnames(t.dbgap.query) = dbgap.query[,2]
-					t.genedf = t(as.matrix(genedf[,3:262]))
-					colnames(t.genedf) = genedf[,2]
-					correl.mat = t(cor(t.genedf,t.dbgap.query))
-					correl.mat = as.data.frame(cbind(correl.mat, correl.mat))
-					correl.mat = correl.mat[order(correl.mat[,2]),]
-					dbgap.query = dbgap.query[match(rownames(correl.mat),dbgap.query[,2]),]
-					}
-				#Add sample types to output
-				group = c(rep("Group", 2), rep("Benign", 35), rep("Primary-PCa", 78), rep("CRPC", 132), rep("NE-CRPC", 15))
-				names = colnames(dbgap.query)
-				dbgap.query = rbind(group, dbgap.query)
-				colnames(dbgap.query) = names
-				#Write table to output
-				write.table(dbgap.query, file, sep="\t", row.names=FALSE)
+			data.column = which(colnames(selectDB) == "Gene_name") + 1 #Data starts after Gene_name column, so add 1, for index position
+			group = c(rep("Group", 2), rep("Benign", sum(selectDB[1,] == -2)), rep("Primary PCa", sum(selectDB[1,] == -1)), rep("Metastasis", sum(selectDB[1,] == 0)), rep("CRPC", sum(selectDB[1,] == 1)), rep("NE-CRPC", sum(selectDB[1,] == 2)))
+			#Unified handling for any database choosen:
+				#If user put in a gene to sort by, use it to resort selectDB:
+				if (unlist(strsplit(input$GOI,","))[1] %in% selectDB[,"Gene_name"]) {
+					rowOfGene = which(selectDB[,"Gene_name"] == unlist(strsplit(input$GOI,","))[1])
+					selectDB.tmp = selectDB[,(data.column):(ncol(selectDB))]
+					selectDB.tmp = selectDB.tmp[,order(selectDB.tmp[1,], selectDB.tmp[rowOfGene,])]
+					selectDB = cbind("Gene_name"=selectDB$Gene_name, selectDB.tmp)
 				}
-			#___________________________________________________________________________________
-			#If SU2C-Benign-vs-PCa use Benign vs. PCa:
-			if (input$database == "SU2C-Benign-vs-PCa") {
-				dbgap.bp = selectDB
-				#If user put in a gene to sort by, use it to resort dbgap.bp:
-				if (unlist(strsplit(input$GOI,","))[1] %in% dbgap.bp[,2]) {
-					rowOfGene = which(dbgap.bp[,2] == unlist(strsplit(input$GOI,","))[1])
-					dbgap.bp.tmp = dbgap.bp[,3:115]
-					dbgap.bp.tmp = dbgap.bp.tmp[,order(dbgap.bp.tmp[1,], dbgap.bp.tmp[rowOfGene,])]
-					dbgap.bp = cbind(dbgap.bp[,1:2], dbgap.bp.tmp)
-					#dbgap.bp[,3:115] <- dbgap.bp[order(dbgap.bp[1, 3:115], dbgap.bp[rowOfGene,3:115]), 3:115]
-					}
-				#Filter dbgap.bp with query
-				dbgap.bp.query = dbgap.bp[which(dbgap.bp[,2] %in% query[,1]),]
+				#Filter selectDB with query
+				selectDB.query = selectDB[which(selectDB[,"Gene_name"] %in% query[,1]),]
 				#Reorder to match query order
-				dbgap.bp.query = dbgap.bp.query[match(query[,1],dbgap.bp.query[,2]), ]
+				selectDB.query = selectDB.query[match(query[,1],selectDB.query[,"Gene_name"]), ]
 				#If correlation plot is wanted, find correlations and sort!
-				if (correlate == TRUE & (unlist(strsplit(input$GOI,","))[1] %in% dbgap.bp[,2])) {
-					genedf = dbgap.bp[which(dbgap.bp[,2] == unlist(strsplit(input$GOI,","))[1]),]
-					t.dbgap.bp.query = t(as.matrix(dbgap.bp.query[,3:115]))
-					colnames(t.dbgap.bp.query) = dbgap.bp.query[,2]
-					t.genedf = t(as.matrix(genedf[,3:115]))
-					colnames(t.genedf) = genedf[,2]
-					correl.mat = t(cor(t.genedf,t.dbgap.bp.query))
+				if (correlate == TRUE & (unlist(strsplit(input$GOI,","))[1] %in% selectDB[,"Gene_name"])) {
+					genedf = selectDB[which(selectDB[,"Gene_name"] == unlist(strsplit(input$GOI,","))[1]),]
+					t.selectDB.query = t(as.matrix(selectDB.query[,(data.column):(ncol(selectDB.query))]))
+					colnames(t.selectDB.query) = selectDB.query[,"Gene_name"]
+					t.genedf = t(as.matrix(genedf[ ,(data.column):(ncol(genedf))]))
+					colnames(t.genedf) = genedf[,"Gene_name"]
+					correl.mat = t(cor(t.genedf,t.selectDB.query))
 					correl.mat = as.data.frame(cbind(correl.mat, correl.mat))
 					correl.mat = correl.mat[order(correl.mat[,2]),]
-					dbgap.bp.query = dbgap.bp.query[match(rownames(correl.mat),dbgap.bp.query[,2]),]
-					}
-				#Add sample types to output
-				group = c(rep("Group", 2), rep("Benign", 35), rep("Primary-PCa", 78))
-				names = colnames(dbgap.bp.query)
-				dbgap.bp.query = rbind(group, dbgap.bp.query)
-				colnames(dbgap.bp.query) = names
-				#Write table to output
-				write.table(dbgap.bp.query, file, sep="\t", row.names=FALSE)
-				}	
-			#___________________________________________________________________________________
-			#If SU2C-PCa-vs-CRPC:
-			if (input$database == "SU2C-PCa-vs-CRPC") {
-				dbgap.pc = selectDB
-				#If user put in a gene to sort by, use it to resort dbgap.pc:
-				if (unlist(strsplit(input$GOI,","))[1] %in% dbgap.pc[,2]) {
-					rowOfGene = which(dbgap.pc[,2] == unlist(strsplit(input$GOI,","))[1])
-					dbgap.pc.tmp = dbgap.pc[,3:212]
-					dbgap.pc.tmp = dbgap.pc.tmp[,order(dbgap.pc.tmp[1,], dbgap.pc.tmp[rowOfGene,])]
-					dbgap.pc = cbind(dbgap.pc[,1:2], dbgap.pc.tmp)
-					#dbgap.pc[,3:212] <- dbgap.pc[order(dbgap.pc[1, 3:212], dbgap.pc[rowOfGene,3:212]), 3:212]
-					}
-				#Filter dbgap.pc with query
-				dbgap.pc.query = dbgap.pc[which(dbgap.pc[,2] %in% query[,1]),]
-				#Reorder to match query order
-				dbgap.pc.query = dbgap.pc.query[match(query[,1],dbgap.pc.query[,2]), ]
-				#If correlation plot is wanted, find correlations and sort!
-				if (correlate == TRUE & (unlist(strsplit(input$GOI,","))[1] %in% dbgap.pc[,2])) {
-					genedf = dbgap.pc[which(dbgap.pc[,2] == unlist(strsplit(input$GOI,","))[1]),]
-					t.dbgap.pc.query = t(as.matrix(dbgap.pc.query[,3:212]))
-					colnames(t.dbgap.pc.query) = dbgap.pc.query[,2]
-					t.genedf = t(as.matrix(genedf[,3:212]))
-					colnames(t.genedf) = genedf[,2]
-					correl.mat = t(cor(t.genedf,t.dbgap.pc.query))
-					correl.mat = as.data.frame(cbind(correl.mat, correl.mat))
-					correl.mat = correl.mat[order(correl.mat[,2]),]
-					dbgap.pc.query = dbgap.pc.query[match(rownames(correl.mat),dbgap.pc.query[,2]),]
-					}
-				#Add sample types to output
-				group = c(rep("Group", 2),rep("Primary-PCa", 78), rep("CRPC", 132))
-				names = colnames(dbgap.pc.query)
-				dbgap.pc.query = rbind(group, dbgap.pc.query)
-				colnames(dbgap.pc.query) = names
-				#Write table to output
-				write.table(dbgap.pc.query, file, sep="\t", row.names=FALSE)
+					selectDB.query = selectDB.query[match(rownames(correl.mat),selectDB.query[,"Gene_name"]),] #Match correlation sort order
 				}
-			#___________________________________________________________________________________
-			#If SU2C-CRPC-vs-NEPC:
-			if (input$database == "SU2C-CRPC-vs-NEPC") {
-				dbgap.cn = selectDB
-				#If user put in a gene to sort by, use it to resort dbgap.cn:
-				if (unlist(strsplit(input$GOI,","))[1] %in% dbgap.cn[,2]) {
-					rowOfGene = which(dbgap.cn[,2] == unlist(strsplit(input$GOI,","))[1])
-					dbgap.cn.tmp = dbgap.cn[,3:149]
-					dbgap.cn.tmp = dbgap.cn.tmp[,order(dbgap.cn.tmp[1,], dbgap.cn.tmp[rowOfGene,])]
-					dbgap.cn = cbind(dbgap.cn[,1:2], dbgap.cn.tmp)
-					#dbgap.cn[,3:149] <- dbgap.cn[order(dbgap.cn[1, 3:149], dbgap.cn[rowOfGene,3:149]), 3:149]
-					}
-				#Filter dbgap.cn with query
-				dbgap.cn.query = dbgap.cn[which(dbgap.cn[,2] %in% query[,1]),]
-				#Reorder to match query order
-				dbgap.cn.query = dbgap.cn.query[match(query[,1],dbgap.cn.query[,2]), ]
-				#If correlation plot is wanted, find correlations and sort!
-				if (correlate == TRUE & (unlist(strsplit(input$GOI,","))[1] %in% dbgap.cn[,2])) {
-					genedf = dbgap.cn[which(dbgap.cn[,2] == unlist(strsplit(input$GOI,","))[1]),]
-					t.dbgap.cn.query = t(as.matrix(dbgap.cn.query[,3:149]))
-					colnames(t.dbgap.cn.query) = dbgap.cn.query[,2]
-					t.genedf = t(as.matrix(genedf[,3:149]))
-					colnames(t.genedf) = genedf[,2]
-					correl.mat = t(cor(t.genedf,t.dbgap.cn.query))
-					correl.mat = as.data.frame(cbind(correl.mat, correl.mat))
-					correl.mat = correl.mat[order(correl.mat[,2]),]
-					dbgap.cn.query = dbgap.cn.query[match(rownames(correl.mat),dbgap.cn.query[,2]),]
-					}
 				#Add sample types to output
-				group = c(rep("Group", 2), rep("CRPC", 132), rep("NE-CRPC", 15))
-				names = colnames(dbgap.cn.query)
-				dbgap.cn.query = rbind(group, dbgap.cn.query)
-				colnames(dbgap.cn.query) = names
+				names = colnames(selectDB.query) #Have to reset names after rbind
+				selectDB.query = rbind(group, selectDB.query)
+				colnames(selectDB.query) = names #Reset colnames 
 				#Write table to output
-				write.table(dbgap.cn.query, file, sep="\t", row.names=FALSE)
-				}
-			#___________________________________________________________________________________
-			#If TCGA, use TCGA data	
-			if (input$database == "TCGA-Prostate") {
-				tcga <- selectDB
-				if (unlist(strsplit(input$GOI,","))[1] %in% tcga[,2]) {
-					rowOfGene = which(tcga[,2] == unlist(strsplit(input$GOI,","))[1])
-					tcga.tmp = tcga[,3:553]
-					tcga.tmp = tcga.tmp[,order(tcga.tmp[1,], tcga.tmp[rowOfGene,])]
-					tcga = cbind(tcga[,1:2], tcga.tmp)
-					#tcga[,3:553] <- tcga[order(tcga[1, 3:553], tcga[rowOfGene,3:553]), 3:553]
-					}
-				#Filter tcga with query
-				tcga.query = tcga[which(tcga[,2] %in% query[,1]),]
-				#Reorder to match query order
-				tcga.query = tcga.query[match(query[,1],tcga.query[,2]), ]
-				#If correlation plot is wanted, find correlations and sort!
-				if (correlate == TRUE & (unlist(strsplit(input$GOI,","))[1] %in% tcga[,2])) {
-					genedf = tcga[which(tcga[,2] == unlist(strsplit(input$GOI,","))[1]),]
-					t.tcga.query = t(as.matrix(tcga.query[,3:553]))
-					colnames(t.tcga.query) = tcga.query[,2]
-					t.genedf = t(as.matrix(genedf[,3:553]))
-					colnames(t.genedf) = genedf[,2]
-					correl.mat = t(cor(t.genedf,t.tcga.query))
-					correl.mat = as.data.frame(cbind(correl.mat, correl.mat))
-					correl.mat = correl.mat[order(correl.mat[,2]),]
-					tcga.query = tcga.query[match(rownames(correl.mat),tcga.query[,2]),]
-					}
-				group = c(rep("Group", 2), rep("Benign", 52), rep("Primary-PCa", 499))
-				names = colnames(tcga.query)
-				tcga.query = rbind(group, tcga.query)
-				colnames(tcga.query) = names
-				write.table(tcga.query, file, sep="\t", row.names=FALSE)
-				}
-			}
+				write.table(selectDB.query, file, sep="\t", row.names=FALSE)
+		}
 	)
 	
+	#Download zscore matrix for gene(s) of interest
 	output$downloadGOIMatrix <- downloadHandler(
 		filename <- function() {
 			paste0(
@@ -952,122 +579,51 @@ server <- function(input,output) {
 				'.txt', 
 				sep=''
 				)
-				},
+		},
 			
-			content <- function(file) {
-				query <- datasetInput()
-				GOI <- geneInput()
-				GOI <- unlist(strsplit(GOI, ","))
-				selectDB <- databaseInput()	
-				#If SU2C, use SU2C data:
-				if (input$database == "SU2C-Prostate") {
-					dbgap <- selectDB
-					#If user put in a gene to sort by, use it to resort dbgap:
-					if (GOI[1] %in% dbgap[,2]) {
-						rowOfGene = which(dbgap[,2] == GOI[1])
-						dbgap.tmp = dbgap[,3:262]
-						dbgap.tmp = dbgap.tmp[,order(dbgap.tmp[1,], dbgap.tmp[rowOfGene,])]
-						dbgap = cbind(dbgap[,1:2], dbgap.tmp)
-						}
-					#Filter dbgap with query
-					dbgap.query = dbgap[which(dbgap[,2] %in% GOI),]
-					if (length(GOI) > 1) { 
-						dbgap.query = dbgap.query[order(factor(dbgap.query$Gene_name, levels=GOI)),]
-						}
-					#Add sample types to output matrix
-					group = c(rep("Group", 2), rep("Benign", 35), rep("Primary-PCa", 78), rep("CRPC", 132), rep("NE-CRPC", 15))
-					names = colnames(dbgap.query)
-					dbgap.query = rbind(group, dbgap.query)
-					colnames(dbgap.query) = names
-					write.table(dbgap.query, file, sep="\t", row.names=FALSE)
-					}
-				#If SU2C Benign vs. Cancer:
-				if (input$database == "SU2C-Benign-vs-PCa") {
-					dbgap.pc <- selectDB
-					#If user put in a gene to sort by, use it to resort dbgap.pc:
-					if (GOI[1] %in% dbgap.pc[,2]) {
-						rowOfGene = which(dbgap.pc[,2] == GOI[1])
-						dbgap.pc.tmp = dbgap.pc[,3:115]
-						dbgap.pc.tmp = dbgap.pc.tmp[,order(dbgap.pc.tmp[1,], dbgap.pc.tmp[rowOfGene,])]
-						dbgap.pc = cbind(dbgap.pc[,1:2], dbgap.pc.tmp)
-						}
-					#Filter dbgap.pc with query
-					dbgap.pc.query = dbgap.pc[which(dbgap.pc[,2] %in% GOI),]
-					if (length(GOI) > 1) { 
-						dbgap.pc.query = dbgap.pc.query[order(factor(dbgap.pc.query$Gene_name, levels=GOI)),]
-						}
-					#Add sample types to output matrix
-					group = c(rep("Group", 2), rep("Benign", 35), rep("Primary-PCa", 78))
-					names = colnames(dbgap.pc.query)
-					dbgap.pc.query = rbind(group, dbgap.pc.query)
-					colnames(dbgap.pc.query) = names
-					write.table(dbgap.pc.query, file, sep="\t", row.names=FALSE)
-					}
-				#If SU2C Cancer vs. CRPC:
-				if (input$database == "SU2C-PCa-vs-CRPC") {
-					dbgap.pc <- selectDB
-					#If user put in a gene to sort by, use it to resort dbgap.pc:
-					if (GOI[1] %in% dbgap.pc[,2]) {
-						rowOfGene = which(dbgap.pc[,2] == GOI[1])
-						dbgap.pc.tmp = dbgap.pc[,3:212]
-						dbgap.pc.tmp = dbgap.pc.tmp[,order(dbgap.pc.tmp[1,], dbgap.pc.tmp[rowOfGene,])]
-						dbgap.pc = cbind(dbgap.pc[,1:2], dbgap.pc.tmp)
-						}
-					#Filter dbgap.pc with query
-					dbgap.pc.query = dbgap.pc[which(dbgap.pc[,2] %in% GOI),]
-					if (length(GOI) > 1) { 
-						dbgap.pc.query = dbgap.pc.query[order(factor(dbgap.pc.query$Gene_name, levels=GOI)),]
-						}
-					#Add sample types to output matrix
-					group = c(rep("Group", 2), rep("Primary-PCa", 78), rep("CRPC", 132))
-					names = colnames(dbgap.pc.query)
-					dbgap.pc.query = rbind(group, dbgap.pc.query)
-					colnames(dbgap.pc.query) = names
-					write.table(dbgap.pc.query, file, sep="\t", row.names=FALSE)
-					}
-				#If SU2C-CRPC-vs-NEPC:
-				if (input$database == "SU2C-CRPC-vs-NEPC") {
-					dbgap.cn <- selectDB
-					#If user put in a gene to sort by, use it to resort dbgap.cn:
-					if (GOI[1] %in% dbgap.cn[,2]) {
-						rowOfGene = which(dbgap.cn[,2] == GOI[1])
-						dbgap.cn.tmp = dbgap.cn[,3:149]
-						dbgap.cn.tmp = dbgap.cn.tmp[,order(dbgap.cn.tmp[1,], dbgap.cn.tmp[rowOfGene,])]
-						dbgap.cn = cbind(dbgap.cn[,1:2], dbgap.cn.tmp)
-						}
-					#Filter dbgap.cn with query
-					dbgap.cn.query = dbgap.cn[which(dbgap.cn[,2] %in% GOI),]
-					if (length(GOI) > 1) { 
-						dbgap.cn.query = dbgap.cn.query[order(factor(dbgap.cn.query$Gene_name, levels=GOI)),]
-						}
-					#Add sample types to output matrix
-					group = c(rep("Group", 2), rep("CRPC", 132), rep("NE-CRPC", 15))
-					names = colnames(dbgap.cn.query)
-					dbgap.cn.query = rbind(group, dbgap.cn.query)
-					colnames(dbgap.cn.query) = names
-					write.table(dbgap.cn.query, file, sep="\t", row.names=FALSE)
-					}
-				#If TCGA, use TCGA data	
-				if (input$database == "TCGA-Prostate") {
-					tcga <- selectDB
-					if (GOI[1] %in% tcga[,2]) {
-						rowOfGene = which(tcga[,2] == GOI[1])
-						tcga.tmp = tcga[,3:553]
-						tcga.tmp = tcga.tmp[,order(tcga.tmp[1,], tcga.tmp[rowOfGene,])]
-						tcga = cbind(tcga[,1:2], tcga.tmp)
-						}
-					#Filter tcga with query
-					tcga.query = tcga[which(tcga[,2] %in% GOI),]
-					if (length(GOI) > 1) { 
-						tcga.query = tcga.query[order(factor(tcga.query$Gene_name, levels=GOI)),]
-						}
-					#Add sample types to output matrix
-					group = c(rep("Group", 2), rep("Benign", 52), rep("Primary-PCa", 499))
-					names = colnames(tcga.query)
-					tcga.query = rbind(group, tcga.query)
-					colnames(tcga.query) = names
-					write.table(tcga.query, file, sep="\t", row.names=FALSE)
-					}
+		content <- function(file) {
+			query <- datasetInput()
+			GOI <- geneInput()
+			GOI <- unlist(strsplit(GOI, ","))
+			selectDB <- databaseInput()
+			data.column = which(colnames(selectDB) == "Gene_name") + 1 #Data starts after Gene_name column, so add 1, for index position
+			group = c(rep("Group", 2), rep("Benign", sum(selectDB[1,] == -2)), rep("Primary PCa", sum(selectDB[1,] == -1)), rep("Metastasis", sum(selectDB[1,] == 0)), rep("CRPC", sum(selectDB[1,] == 1)), rep("NE-CRPC", sum(selectDB[1,] == 2)))
+			#If user put in a gene to sort by, use it to resort selectDB:
+			if (GOI[1] %in% selectDB[,"Gene_name"]) {
+				rowOfGene = which(selectDB[,"Gene_name"] == GOI[1])
+				selectDB.tmp = selectDB[,(data.column):(ncol(selectDB))]
+				selectDB.tmp = selectDB.tmp[,order(selectDB.tmp[1,], selectDB.tmp[rowOfGene,])]
+				selectDB = cbind("Gene_name"=selectDB$Gene_name, selectDB.tmp) 
+				data.column = which(colnames(selectDB) == "Gene_name") + 1 #Data starts after Gene_name column, so add 1, for index position
 				}
-		)
+			#Filter selectDB with query
+			selectDB.query = selectDB[which(selectDB[,"Gene_name"] %in% GOI),]
+			if (length(GOI) > 1) { 
+				selectDB.query = selectDB.query[order(factor(selectDB.query$Gene_name, levels=GOI)),]
+				}
+			#Add sample types to output matrix, save colnames then reset after rbind to be sure headers match selectDB
+			names = colnames(selectDB.query)
+			selectDB.query = rbind(group, selectDB.query)
+			colnames(selectDB.query) = names
+			write.table(selectDB.query, file, sep="\t", row.names=FALSE)
+		}
+	)
+	
+	#Tab of table with database summaries - rendered with "datatable" to jazz it up and provide user interaction
+	#Do Datasets summary table
+	databaseSummary <- as.data.frame(fread("Datasets-Summary.txt", sep="\t", stringsAsFactors=FALSE, header=TRUE))
+	
+	output$tableSummary <- DT::renderDataTable(
+		datatable(databaseSummary, 
+		options = list(
+			pageLength = 20, 
+			columnDefs = list(list(className = 'dt-center', targets=1:9))
+		),	
+		rownames=FALSE) %>%
+			formatStyle('Benign', color = 'black', backgroundColor = 'green') %>%
+			formatStyle('PCa', color = 'black', backgroundColor = 'orange') %>%
+			formatStyle('Met', color = 'white', backgroundColor = 'black') %>%
+			formatStyle('CRPC', color = 'black', backgroundColor = 'red') %>%
+			formatStyle('NEPC', color = 'black', backgroundColor = 'darkred')
+	)	
 }
